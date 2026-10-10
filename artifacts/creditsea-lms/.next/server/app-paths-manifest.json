@@ -1,0 +1,14 @@
+{
+  "/_global-error/page": "app/_global-error/page.js",
+  "/_not-found/page": "app/_not-found/page.js",
+  "/borrower/loans/page": "app/borrower/loans/page.js",
+  "/borrower/page": "app/borrower/page.js",
+  "/login/page": "app/login/page.js",
+  "/operations/collection/page": "app/operations/collection/page.js",
+  "/operations/disbursement/page": "app/operations/disbursement/page.js",
+  "/operations/page": "app/operations/page.js",
+  "/operations/sales/page": "app/operations/sales/page.js",
+  "/operations/sanction/page": "app/operations/sanction/page.js",
+  "/page": "app/page.js",
+  "/signup/page": "app/signup/page.js"
+}
