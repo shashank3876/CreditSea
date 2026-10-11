@@ -281,6 +281,26 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+  /borrower/loans/{id}/payments:
+    get:
+      operationId: listBorrowerLoanPayments
+      tags: [borrower]
+      summary: List payments on a loan owned by the signed-in borrower
+      parameters:
+        - $ref: "#/components/parameters/LoanId"
+      responses:
+        "200":
+          description: Borrower payment history
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
 
   /operations/sales/leads:
     get:
@@ -302,6 +322,36 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+  /operations/sales/leads/{id}/notes:
+    post:
+      operationId: addSalesLeadNote
+      tags: [operations]
+      summary: Record a sales follow-up note and mark the lead as contacted
+      parameters:
+        - $ref: "#/components/parameters/LeadId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SalesLeadNoteInput"
+      responses:
+        "200":
+          description: Updated sales lead
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lead"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
   /operations/sanction/loans:
     get:
       operationId: listSanctionLoans
@@ -631,6 +681,13 @@ components:
       schema:
         type: string
         pattern: "^[a-fA-F0-9]{24}$"
+    LeadId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: "^[a-fA-F0-9]{24}$"
     Page:
       name: page
       in: query
@@ -901,15 +958,33 @@ components:
         page: { type: integer }
         pageSize: { type: integer }
         total: { type: integer }
+    LeadNote:
+      type: object
+      required: [note, recordedBy, recordedAt]
+      properties:
+        note: { type: string }
+        recordedBy: { type: string }
+        recordedAt: { type: string, format: date-time }
+    SalesLeadNoteInput:
+      type: object
+      required: [note]
+      properties:
+        note: { type: string, minLength: 1, maxLength: 1000 }
     Lead:
       type: object
-      required: [id, name, email, registeredAt, status]
+      required: [id, name, email, registeredAt, status, contactedAt, contactedBy, notes]
       properties:
         id: { type: string }
         name: { type: string }
         email: { type: string, format: email }
         registeredAt: { type: string, format: date-time }
         status: { type: string, const: REGISTERED_NOT_APPLIED }
+        contactedAt: { type: ["string", "null"], format: date-time }
+        contactedBy: { type: ["string", "null"] }
+        notes:
+          type: array
+          items:
+            $ref: "#/components/schemas/LeadNote"
     LeadListResponse:
       type: object
       required: [items, page, pageSize, total]

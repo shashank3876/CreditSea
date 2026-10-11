@@ -33,6 +33,13 @@ export type EligibilityIssue = {
   message: string;
 };
 
+export type SalesLeadNote = {
+  note: string;
+  by: Types.ObjectId;
+  name: string;
+  at: Date;
+};
+
 export interface IUser {
   name: string;
   email: string;
@@ -47,6 +54,12 @@ export interface IUser {
   eligibilityStatus: "NOT_CHECKED" | "ELIGIBLE" | "INELIGIBLE";
   eligibilityErrors: EligibilityIssue[];
   salarySlipId?: Types.ObjectId;
+  salesContact?: {
+    by: Types.ObjectId;
+    name: string;
+    at: Date;
+  };
+  salesNotes: SalesLeadNote[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -55,6 +68,25 @@ const eligibilityIssueSchema = new Schema<EligibilityIssue>(
   {
     field: { type: String, required: true },
     message: { type: String, required: true },
+  },
+  { _id: false },
+);
+
+const salesLeadNoteSchema = new Schema<SalesLeadNote>(
+  {
+    note: { type: String, required: true, trim: true, maxlength: 1000 },
+    by: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    name: { type: String, required: true, trim: true, maxlength: 100 },
+    at: { type: Date, required: true },
+  },
+  { _id: false },
+);
+
+const salesContactSchema = new Schema<NonNullable<IUser["salesContact"]>>(
+  {
+    by: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    name: { type: String, required: true, trim: true, maxlength: 100 },
+    at: { type: Date, required: true },
   },
   { _id: false },
 );
@@ -93,6 +125,8 @@ const userSchema = new Schema<IUser>(
     },
     eligibilityErrors: { type: [eligibilityIssueSchema], default: [] },
     salarySlipId: { type: Schema.Types.ObjectId, ref: "SalarySlip" },
+    salesContact: { type: salesContactSchema },
+    salesNotes: { type: [salesLeadNoteSchema], default: [] },
   },
   { timestamps: true, minimize: false },
 );

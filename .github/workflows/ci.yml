@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Typecheck · Test · Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck API
+        run: pnpm --filter @workspace/api-server run typecheck
+
+      - name: Test API
+        run: pnpm --filter @workspace/api-server run test
+
+      - name: Build API
+        run: pnpm --filter @workspace/api-server run build
+
+      - name: Typecheck web
+        run: pnpm --filter @workspace/creditsea-lms run typecheck
+
+      - name: Build web
+        run: pnpm --filter @workspace/creditsea-lms run build
+        env:
+          NODE_ENV: production

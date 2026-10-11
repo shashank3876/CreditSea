@@ -15,6 +15,29 @@ export function userDto(
   };
 }
 
+export function leadDto(
+  user: HydratedDocument<IUser> | (IUser & { _id: { toString(): string } }),
+) {
+  const notes = [...(user.salesNotes ?? [])]
+    .sort((a, b) => b.at.getTime() - a.at.getTime())
+    .slice(0, 20)
+    .map((entry) => ({
+      note: entry.note,
+      recordedBy: entry.name,
+      recordedAt: entry.at,
+    }));
+  return {
+    id: user._id.toString(),
+    name: user.name,
+    email: user.email,
+    registeredAt: user.createdAt,
+    status: "REGISTERED_NOT_APPLIED" as const,
+    contactedAt: user.salesContact?.at ?? null,
+    contactedBy: user.salesContact?.name ?? null,
+    notes,
+  };
+}
+
 export function employeeDto(
   user: HydratedDocument<IUser> | (IUser & { _id: { toString(): string } }),
 ) {

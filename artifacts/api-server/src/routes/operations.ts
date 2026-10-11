@@ -1,6 +1,9 @@
 import mongoose from "mongoose";
 import { Router } from "express";
 import {
+  AddSalesLeadNoteBody,
+  AddSalesLeadNoteParams,
+  AddSalesLeadNoteResponse,
   ApproveLoanBody,
   ApproveLoanParams,
   ApproveLoanResponse,
@@ -31,7 +34,7 @@ import {
   validatePayment,
   validateUtr,
 } from "../lib/domain";
-import { loanDto, paymentDto } from "../lib/dto";
+import { leadDto, loanDto, paymentDto } from "../lib/dto";
 import { HttpError } from "../lib/errors";
 import {
   Loan,
@@ -166,18 +169,61 @@ router.get(
     ]);
     res.json(
       ListSalesLeadsResponse.parse({
-        items: users.map((user) => ({
-          id: user._id.toString(),
-          name: user.name,
-          email: user.email,
-          registeredAt: user.createdAt,
-          status: "REGISTERED_NOT_APPLIED",
-        })),
+        items: users.map(leadDto),
         page: query.page,
         pageSize: query.pageSize,
         total,
       }),
     );
+  },
+);
+
+router.post(
+  "/operations/sales/leads/:id/notes",
+  requireAuth,
+  requireRole("ADMIN", "SALES"),
+  async (req, res) => {
+    const { id } = validate(AddSalesLeadNoteParams, req.params);
+    const input = validate(AddSalesLeadNoteBody, req.body);
+    const applied = await Loan.exists({ borrowerId: id });
+    if (applied) {
+      throw new HttpError(
+        409,
+        "This borrower has already applied and is no longer a sales lead.",
+        "INVALID_STATE",
+      );
+    }
+    const now = new Date();
+    const noteEntry = {
+      note: input.note.trim(),
+      by: req.currentUser!.id,
+      name: req.currentUser!.name,
+      at: now,
+    };
+    const user = await User.findOneAndUpdate(
+      { _id: id, role: "BORROWER" },
+      {
+        $set: {
+          salesContact: {
+            by: req.currentUser!.id,
+            name: req.currentUser!.name,
+            at: now,
+          },
+        },
+        $push: {
+          salesNotes: {
+            $each: [noteEntry],
+            $position: 0,
+            $slice: 50,
+          },
+        },
+      },
+      { new: true, runValidators: true },
+    ).exec();
+    if (!user) {
+      throw new HttpError(404, "Sales lead not found.", "NOT_FOUND");
+    }
+    res.json(AddSalesLeadNoteResponse.parse(leadDto(user)));
   },
 );
 
