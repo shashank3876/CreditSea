@@ -1,0 +1,981 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.2.0
+  description: CreditSea loan origination and servicing API
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+  - name: auth
+  - name: borrower
+  - name: operations
+  - name: employees
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /auth/signup:
+    post:
+      operationId: signUp
+      tags: [auth]
+      summary: Create a borrower account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SignupInput"
+      responses:
+        "201":
+          description: Borrower account created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /auth/login:
+    post:
+      operationId: logIn
+      tags: [auth]
+      summary: Start a secure session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginInput"
+      responses:
+        "200":
+          description: Authenticated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /auth/logout:
+    post:
+      operationId: logOut
+      tags: [auth]
+      summary: End the current session
+      responses:
+        "200":
+          description: Session ended
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+  /auth/me:
+    get:
+      operationId: getCurrentUser
+      tags: [auth]
+      summary: Get the signed-in user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /borrower/profile:
+    get:
+      operationId: getBorrowerProfile
+      tags: [borrower]
+      summary: Get the borrower's profile and eligibility state
+      responses:
+        "200":
+          description: Borrower profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BorrowerProfile"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    put:
+      operationId: updateBorrowerProfile
+      tags: [borrower]
+      summary: Save personal details and evaluate eligibility
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BorrowerProfileInput"
+      responses:
+        "200":
+          description: Saved profile and eligibility result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EligibilityResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /borrower/eligibility:
+    post:
+      operationId: checkBorrowerEligibility
+      tags: [borrower]
+      summary: Recalculate eligibility using server-side rules
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BorrowerProfileInput"
+      responses:
+        "200":
+          description: Eligibility result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EligibilityResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /borrower/salary-slip:
+    post:
+      operationId: uploadSalarySlip
+      tags: [borrower]
+      summary: Upload a private salary slip
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/SalarySlipInput"
+      responses:
+        "201":
+          description: Salary slip stored privately
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SalarySlip"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "413":
+          description: File exceeds the 5 MB limit
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /borrower/loans:
+    post:
+      operationId: applyForLoan
+      tags: [borrower]
+      summary: Create an eligible borrower's loan application
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoanApplicationInput"
+      responses:
+        "201":
+          description: Application submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Loan"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+    get:
+      operationId: listBorrowerLoans
+      tags: [borrower]
+      summary: List the signed-in borrower's applications
+      responses:
+        "200":
+          description: Borrower's loan applications
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoanListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /borrower/loans/{id}:
+    get:
+      operationId: getBorrowerLoan
+      tags: [borrower]
+      summary: Get one loan owned by the signed-in borrower
+      parameters:
+        - $ref: "#/components/parameters/LoanId"
+      responses:
+        "200":
+          description: Borrower loan details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Loan"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /borrower/loans/{id}/salary-slip:
+    get:
+      operationId: downloadBorrowerSalarySlip
+      tags: [borrower]
+      summary: Download the borrower's own salary slip
+      parameters:
+        - $ref: "#/components/parameters/LoanId"
+      responses:
+        "200":
+          description: Private salary slip file
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+            image/png:
+              schema:
+                type: string
+                format: binary
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /operations/sales/leads:
+    get:
+      operationId: listSalesLeads
+      tags: [operations]
+      summary: Find registered borrowers without active or historical applications
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+        - $ref: "#/components/parameters/Search"
+      responses:
+        "200":
+          description: Paginated sales leads
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LeadListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /operations/sanction/loans:
+    get:
+      operationId: listSanctionLoans
+      tags: [operations]
+      summary: List applications awaiting a sanction decision
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+        - $ref: "#/components/parameters/Search"
+      responses:
+        "200":
+          description: Applications awaiting review
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoanListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /operations/sanction/loans/{id}/approve:
+    post:
+      operationId: approveLoan
+      tags: [operations]
+      summary: Approve an APPLIED loan
+      parameters:
+        - $ref: "#/components/parameters/LoanId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SanctionApprovalInput"
+      responses:
+        "200":
+          description: Sanctioned loan
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Loan"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /operations/sanction/loans/{id}/reject:
+    post:
+      operationId: rejectLoan
+      tags: [operations]
+      summary: Reject an APPLIED loan with a reason
+      parameters:
+        - $ref: "#/components/parameters/LoanId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SanctionRejectionInput"
+      responses:
+        "200":
+          description: Rejected loan
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Loan"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /operations/sanction/loans/{id}/salary-slip:
+    get:
+      operationId: downloadSanctionSalarySlip
+      tags: [operations]
+      summary: Download a salary slip for a loan under sanction review
+      parameters:
+        - $ref: "#/components/parameters/LoanId"
+      responses:
+        "200":
+          description: Private salary slip file
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+            image/png:
+              schema:
+                type: string
+                format: binary
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /operations/disbursement/loans:
+    get:
+      operationId: listDisbursementLoans
+      tags: [operations]
+      summary: List sanctioned loans awaiting disbursement
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+        - $ref: "#/components/parameters/Search"
+      responses:
+        "200":
+          description: Loans awaiting disbursement
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoanListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /operations/disbursement/loans/{id}/disburse:
+    post:
+      operationId: disburseLoan
+      tags: [operations]
+      summary: Disburse a sanctioned loan
+      parameters:
+        - $ref: "#/components/parameters/LoanId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DisbursementInput"
+      responses:
+        "200":
+          description: Disbursed loan
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Loan"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /operations/collection/loans:
+    get:
+      operationId: listCollectionLoans
+      tags: [operations]
+      summary: List disbursed and closed loans for collections
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+        - $ref: "#/components/parameters/Search"
+      responses:
+        "200":
+          description: Collection worklist
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoanListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /operations/collection/loans/{id}/payments:
+    get:
+      operationId: listLoanPayments
+      tags: [operations]
+      summary: View a loan's payment history
+      parameters:
+        - $ref: "#/components/parameters/LoanId"
+      responses:
+        "200":
+          description: Payment history
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      operationId: recordLoanPayment
+      tags: [operations]
+      summary: Record a payment against a disbursed loan
+      parameters:
+        - $ref: "#/components/parameters/LoanId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PaymentInput"
+      responses:
+        "201":
+          description: Recorded payment and updated loan
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /operations/dashboard/stats:
+    get:
+      operationId: getDashboardStats
+      tags: [operations]
+      summary: Get role-filtered loan pipeline totals
+      responses:
+        "200":
+          description: Dashboard statistics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardStats"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /operations/employees:
+    get:
+      operationId: listEmployees
+      tags: [employees]
+      summary: List internal employee accounts
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+        - $ref: "#/components/parameters/Search"
+      responses:
+        "200":
+          description: Employee accounts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmployeeListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      operationId: createEmployee
+      tags: [employees]
+      summary: Create an internal employee account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmployeeCreateInput"
+      responses:
+        "201":
+          description: Employee created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Employee"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /operations/employees/{id}/status:
+    patch:
+      operationId: updateEmployeeStatus
+      tags: [employees]
+      summary: Activate or disable an employee account
+      parameters:
+        - $ref: "#/components/parameters/EmployeeId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmployeeStatusInput"
+      responses:
+        "200":
+          description: Updated employee
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Employee"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+components:
+  parameters:
+    LoanId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: "^[a-fA-F0-9]{24}$"
+    EmployeeId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: "^[a-fA-F0-9]{24}$"
+    Page:
+      name: page
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    PageSize:
+      name: pageSize
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    Search:
+      name: search
+      in: query
+      required: false
+      schema:
+        type: string
+        maxLength: 100
+  responses:
+    BadRequest:
+      description: Invalid input
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Unauthorized:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Forbidden:
+      description: Role or resource access denied
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Conflict:
+      description: State conflict or duplicate operation
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required: [status]
+    UserRole:
+      type: string
+      enum: [ADMIN, SALES, SANCTION, DISBURSEMENT, COLLECTION, BORROWER]
+    EmployeeRole:
+      type: string
+      enum: [SALES, SANCTION, DISBURSEMENT, COLLECTION]
+    AccountStatus:
+      type: string
+      enum: [ACTIVE, DISABLED]
+    EmploymentMode:
+      type: string
+      enum: [SALARIED, SELF_EMPLOYED, UNEMPLOYED]
+    LoanStatus:
+      type: string
+      enum: [APPLIED, SANCTIONED, REJECTED, DISBURSED, CLOSED]
+    User:
+      type: object
+      required: [id, name, email, role, status, createdAt]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        email: { type: string, format: email }
+        role: { $ref: "#/components/schemas/UserRole" }
+        status: { $ref: "#/components/schemas/AccountStatus" }
+        createdAt: { type: string, format: date-time }
+    Employee:
+      type: object
+      required: [id, name, email, role, status, createdAt]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        email: { type: string, format: email }
+        role:
+          type: string
+          enum: [ADMIN, SALES, SANCTION, DISBURSEMENT, COLLECTION]
+        status: { $ref: "#/components/schemas/AccountStatus" }
+        createdAt: { type: string, format: date-time }
+    EmployeeCreateInput:
+      type: object
+      required: [name, email, password, role]
+      properties:
+        name: { type: string, minLength: 2, maxLength: 100 }
+        email: { type: string, format: email, maxLength: 254 }
+        password: { type: string, minLength: 12, maxLength: 128 }
+        role: { $ref: "#/components/schemas/EmployeeRole" }
+    EmployeeStatusInput:
+      type: object
+      required: [status]
+      properties:
+        status: { $ref: "#/components/schemas/AccountStatus" }
+    EmployeeListResponse:
+      type: object
+      required: [items, page, pageSize, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Employee"
+        page: { type: integer }
+        pageSize: { type: integer }
+        total: { type: integer }
+    SignupInput:
+      type: object
+      required: [name, email, password]
+      properties:
+        name: { type: string, minLength: 2, maxLength: 100 }
+        email: { type: string, format: email, maxLength: 254 }
+        password: { type: string, minLength: 12, maxLength: 128 }
+    LoginInput:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email, maxLength: 254 }
+        password: { type: string, minLength: 1, maxLength: 128 }
+    AuthResponse:
+      type: object
+      required: [user]
+      properties:
+        user: { $ref: "#/components/schemas/User" }
+    MessageResponse:
+      type: object
+      required: [message]
+      properties:
+        message: { type: string }
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error: { type: string }
+        fieldErrors:
+          type: array
+          items:
+            $ref: "#/components/schemas/FieldError"
+    FieldError:
+      type: object
+      required: [field, message]
+      properties:
+        field: { type: string }
+        message: { type: string }
+    BorrowerProfile:
+      type: object
+      required: [name, email, panMasked, dateOfBirth, monthlySalaryRupees, employmentMode, eligibilityStatus, eligibilityErrors, salarySlip]
+      properties:
+        name: { type: string }
+        email: { type: string, format: email }
+        panMasked: { type: ["string", "null"] }
+        dateOfBirth: { type: ["string", "null"], format: date }
+        monthlySalaryRupees: { type: ["integer", "null"], minimum: 0 }
+        employmentMode:
+          oneOf:
+            - $ref: "#/components/schemas/EmploymentMode"
+            - type: "null"
+        eligibilityStatus:
+          type: string
+          enum: [NOT_CHECKED, ELIGIBLE, INELIGIBLE]
+        eligibilityErrors:
+          type: array
+          items:
+            $ref: "#/components/schemas/FieldError"
+        salarySlip:
+          oneOf:
+            - $ref: "#/components/schemas/SalarySlip"
+            - type: "null"
+    BorrowerProfileInput:
+      type: object
+      required: [name, pan, dateOfBirth, monthlySalaryRupees, employmentMode]
+      properties:
+        name: { type: string, minLength: 2, maxLength: 100 }
+        pan: { type: string, pattern: "^[A-Za-z]{5}[0-9]{4}[A-Za-z]$", minLength: 10, maxLength: 10 }
+        dateOfBirth: { type: string, format: date }
+        monthlySalaryRupees: { type: integer, minimum: 0, maximum: 100000000 }
+        employmentMode: { $ref: "#/components/schemas/EmploymentMode" }
+    EligibilityResult:
+      type: object
+      required: [eligible, errors, profile]
+      properties:
+        eligible: { type: boolean }
+        errors:
+          type: array
+          items:
+            $ref: "#/components/schemas/FieldError"
+        profile:
+          $ref: "#/components/schemas/BorrowerProfile"
+    SalarySlipInput:
+      type: object
+      required: [file]
+      properties:
+        file:
+          type: string
+          format: binary
+    SalarySlip:
+      type: object
+      required: [id, fileName, contentType, sizeBytes, uploadedAt]
+      properties:
+        id: { type: string }
+        fileName: { type: string }
+        contentType: { type: string, enum: [application/pdf, image/jpeg, image/png] }
+        sizeBytes: { type: integer, minimum: 1, maximum: 5242880 }
+        uploadedAt: { type: string, format: date-time }
+    LoanApplicationInput:
+      type: object
+      required: [loanAmountRupees, tenureDays, idempotencyKey]
+      properties:
+        loanAmountRupees: { type: integer, minimum: 50000, maximum: 500000 }
+        tenureDays: { type: integer, minimum: 30, maximum: 365 }
+        idempotencyKey: { type: string, minLength: 16, maxLength: 100 }
+    Loan:
+      type: object
+      required: [id, reference, borrowerId, borrowerName, borrowerEmail, principalPaise, tenureDays, interestRatePercent, interestPaise, totalRepaymentPaise, totalPaidPaise, outstandingBalancePaise, status, rejectionReason, panMasked, monthlySalaryRupees, employmentMode, salarySlipAvailable, sanctionedAt, sanctionedBy, disbursedAt, disbursedBy, createdAt, updatedAt]
+      properties:
+        id: { type: string }
+        reference: { type: string }
+        borrowerId: { type: string }
+        borrowerName: { type: string }
+        borrowerEmail: { type: string, format: email }
+        principalPaise: { type: integer, minimum: 0 }
+        tenureDays: { type: integer, minimum: 1 }
+        interestRatePercent: { type: number, const: 12 }
+        interestPaise: { type: integer, minimum: 0 }
+        totalRepaymentPaise: { type: integer, minimum: 0 }
+        totalPaidPaise: { type: integer, minimum: 0 }
+        outstandingBalancePaise: { type: integer, minimum: 0 }
+        status: { $ref: "#/components/schemas/LoanStatus" }
+        rejectionReason: { type: ["string", "null"] }
+        panMasked: { type: ["string", "null"] }
+        monthlySalaryRupees: { type: ["integer", "null"] }
+        employmentMode:
+          oneOf:
+            - $ref: "#/components/schemas/EmploymentMode"
+            - type: "null"
+        salarySlipAvailable: { type: boolean }
+        sanctionedAt: { type: ["string", "null"], format: date-time }
+        sanctionedBy: { type: ["string", "null"] }
+        disbursedAt: { type: ["string", "null"], format: date-time }
+        disbursedBy: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    LoanListResponse:
+      type: object
+      required: [items, page, pageSize, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Loan"
+        page: { type: integer }
+        pageSize: { type: integer }
+        total: { type: integer }
+    Lead:
+      type: object
+      required: [id, name, email, registeredAt, status]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        email: { type: string, format: email }
+        registeredAt: { type: string, format: date-time }
+        status: { type: string, const: REGISTERED_NOT_APPLIED }
+    LeadListResponse:
+      type: object
+      required: [items, page, pageSize, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Lead"
+        page: { type: integer }
+        pageSize: { type: integer }
+        total: { type: integer }
+    SanctionApprovalInput:
+      type: object
+      properties:
+        note: { type: string, maxLength: 500 }
+    SanctionRejectionInput:
+      type: object
+      required: [reason]
+      properties:
+        reason: { type: string, minLength: 5, maxLength: 1000 }
+    DisbursementInput:
+      type: object
+      required: [confirmed]
+      properties:
+        confirmed: { type: boolean, const: true }
+    PaymentInput:
+      type: object
+      required: [utr, amountPaise, paymentDate]
+      properties:
+        utr: { type: string, minLength: 6, maxLength: 50 }
+        amountPaise: { type: integer, minimum: 1 }
+        paymentDate: { type: string, format: date-time }
+    Payment:
+      type: object
+      required: [id, loanId, borrowerId, utr, amountPaise, paymentDate, recordedBy, createdAt]
+      properties:
+        id: { type: string }
+        loanId: { type: string }
+        borrowerId: { type: string }
+        utr: { type: string }
+        amountPaise: { type: integer }
+        paymentDate: { type: string, format: date-time }
+        recordedBy: { type: string }
+        createdAt: { type: string, format: date-time }
+    PaymentListResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Payment"
+    PaymentResult:
+      type: object
+      required: [payment, loan]
+      properties:
+        payment: { $ref: "#/components/schemas/Payment" }
+        loan: { $ref: "#/components/schemas/Loan" }
+    DashboardStats:
+      type: object
+      required: [borrowers, unappliedLeads, applied, sanctioned, disbursed, closed, totalOutstandingPaise]
+      properties:
+        borrowers: { type: integer }
+        unappliedLeads: { type: integer }
+        applied: { type: integer }
+        sanctioned: { type: integer }
+        disbursed: { type: integer }
+        closed: { type: integer }
+        totalOutstandingPaise: { type: integer }

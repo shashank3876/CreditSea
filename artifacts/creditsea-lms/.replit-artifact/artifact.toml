@@ -1,0 +1,25 @@
+kind = "web"
+previewPath = "/"
+title = "CreditSea Loan Management"
+description = "A secure borrower portal and operations workspace for managing loan applications, credit decisions, disbursement, and collections."
+version = "1.0.0"
+id = "artifacts/creditsea-lms"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 21762
+
+[services.development]
+run = "pnpm --filter @workspace/creditsea-lms run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/creditsea-lms", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/creditsea-lms/out"
+
+
+[services.env]
+PORT = "21762"
+BASE_PATH = "/"
