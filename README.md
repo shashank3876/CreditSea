@@ -45,13 +45,13 @@ Loans are ₹50,000–₹500,000 for 30–365 days. Repayment is calculated usin
 | Role | Workspace access |
 | --- | --- |
 | `ADMIN` | Dashboard and every operations queue |
-| `SALES` | New application and lead review |
-| `SANCTION` | Approve or reject eligible applications |
-| `DISBURSEMENT` | Confirm an approved loan's disbursement |
-| `COLLECTION` | Review balances and record payments |
+| `SALES` | Overview statistics and sales lead review |
+| `SANCTION` | Overview statistics and sanction decisions |
+| `DISBURSEMENT` | Overview statistics and loan disbursement |
+| `COLLECTION` | Overview statistics and payment collection |
 | `BORROWER` | Own profile, applications, and salary-slip downloads |
 
-The API enforces these permissions independently of the client UI. Staff decisions and payment records retain the acting user and timestamp. Payment UTRs are normalized and unique; a payment cannot exceed the outstanding balance.
+The overview-statistics endpoint is available to all staff roles. Queue and action endpoints remain role-restricted. The API enforces permissions independently of the client UI. Staff decisions and payment records retain the acting user and timestamp. Payment UTRs are normalized and unique; a payment cannot exceed the outstanding balance.
 
 ## REST API
 
@@ -65,7 +65,7 @@ The full request and response contract is maintained in [`lib/api-spec/openapi.y
 | Sanction | `GET /operations/sanction/loans`; `POST /operations/sanction/loans/:id/approve`, `/reject`; `GET /operations/sanction/loans/:id/salary-slip` | `SANCTION`, `ADMIN` |
 | Disbursement | `GET /operations/disbursement/loans`; `POST /operations/disbursement/loans/:id/disburse` | `DISBURSEMENT`, `ADMIN` |
 | Collection | `GET /operations/collection/loans`, `/operations/collection/loans/:id/payments`; `POST /operations/collection/loans/:id/payments` | `COLLECTION`, `ADMIN` |
-| Dashboard | `GET /operations/dashboard/stats` | `ADMIN` |
+| Dashboard | `GET /operations/dashboard/stats` | All staff roles |
 | Health | `GET /healthz` | Public liveness check |
 
 Operations list endpoints accept validated pagination and search query parameters. The OpenAPI file defines the precise body fields, limits, and response schemas.
