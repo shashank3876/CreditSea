@@ -167,14 +167,25 @@ router.get(
         .exec(),
       User.countDocuments(filter),
     ]);
-    res.json(
-      ListSalesLeadsResponse.parse({
-        items: users.map(leadDto),
-        page: query.page,
-        pageSize: query.pageSize,
-        total,
-      }),
-    );
+    const payload = {
+      items: users.map(leadDto),
+      page: query.page,
+      pageSize: query.pageSize,
+      total,
+    };
+    const parsed = ListSalesLeadsResponse.safeParse(payload);
+    if (!parsed.success) {
+      throw new HttpError(
+        500,
+        "Sales leads response failed validation.",
+        "RESPONSE_VALIDATION_ERROR",
+        parsed.error.issues.map((issue) => ({
+          field: issue.path.join("."),
+          message: issue.message,
+        })),
+      );
+    }
+    res.json(parsed.data);
   },
 );
 

@@ -49,11 +49,29 @@ export const errorHandler: ErrorRequestHandler = (error, _req, res, next) => {
     return;
   }
 
+  const zodIssues =
+    safeError.name === "ZodError" &&
+    error &&
+    typeof error === "object" &&
+    "issues" in error &&
+    Array.isArray((error as { issues?: unknown }).issues)
+      ? (error as { issues: { path?: (string | number)[]; message?: string }[] })
+          .issues
+      : undefined;
+
   logger.error(
     {
       errorName:
         typeof safeError.name === "string" ? safeError.name : "UnknownError",
       errorCode: typeof safeError.code === "number" ? safeError.code : undefined,
+      errorMessage:
+        typeof safeError.message === "string"
+          ? safeError.message.slice(0, 200)
+          : undefined,
+      zodIssues: zodIssues?.slice(0, 5).map((issue) => ({
+        path: issue.path?.join(".") ?? "",
+        message: issue.message ?? "",
+      })),
     },
     "Unhandled API request error",
   );
