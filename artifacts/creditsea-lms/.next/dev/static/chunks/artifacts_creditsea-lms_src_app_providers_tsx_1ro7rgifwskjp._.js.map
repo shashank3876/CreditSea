@@ -1,0 +1,6 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 4, "column": 0}, "map": {"version":3,"sources":["file:///home/runner/workspace/artifacts/creditsea-lms/src/app/providers.tsx"],"sourcesContent":["'use client';\n\nimport { QueryClient, QueryClientProvider } from '@tanstack/react-query';\nimport { type ReactNode, useState } from 'react';\n\nexport default function Providers({ children }: { children: ReactNode }) {\n  const [client] = useState(() => new QueryClient({\n    defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false }, mutations: { retry: false } },\n  }));\n  return <QueryClientProvider client={client}>{children}</QueryClientProvider>;\n}\n"],"names":["Providers","children","client","defaultOptions","queries","retry","refetchOnWindowFocus","mutations"],"mappings":";;;;;AAEA;AAAA;AACA;;;AAHA;;;AAKe,SAASA,UAAU,EAAEC,QAAQ,EAA2B;;IACrE,MAAM,CAACC,OAAO,GAAG,IAAA,0UAAQ;8BAAC,IAAM,IAAI,yQAAW,CAAC;gBAC9CC,gBAAgB;oBAAEC,SAAS;wBAAEC,OAAO;wBAAGC,sBAAsB;oBAAM;oBAAGC,WAAW;wBAAEF,OAAO;oBAAM;gBAAE;YACpG;;IACA,qBAAO,8VAAC,iTAAmB;QAACH,QAAQA;kBAASD;;;;;;AAC/C;GALwBD;KAAAA"}}]
+}

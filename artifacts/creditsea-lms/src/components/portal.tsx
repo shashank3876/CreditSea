@@ -99,10 +99,36 @@ function AuthPage({signup}:{signup:boolean}) {
   </div>;
 }
 
-function Entry({user,error}:{user?:User;error:unknown}) {
+function Entry({user}:{user?:User}) {
   const router=useRouter();
-  useEffect(()=>{if(user)router.replace(user.role==='BORROWER'?'/borrower':'/operations');else if(error)router.replace('/login');},[user,error,router]);
-  return <div style={{minHeight:'100dvh',display:'grid',placeItems:'center',background:'#f7f5ef'}}><div style={{width:240}}><div className="skeleton" style={{height:12,width:75,margin:'0 auto 18px'}}/><div className="skeleton" style={{height:30,marginBottom:10}}/><div className="skeleton" style={{height:14,width:160,margin:'auto'}}/><p className="sr-only">Checking your secure session</p></div></div>;
+  useEffect(()=>{if(user)router.replace(user.role==='BORROWER'?'/borrower':'/operations');},[user,router]);
+  return <div className="auth-page">
+    <aside className="auth-aside">
+      <Link className="brand-row" href="/"><span className="brand-mark">C</span><span className="brand-name">creditsea</span></Link>
+      <div className="aside-copy">
+        <div className="eyebrow">Personal finance, made clear</div>
+        <h2>A simpler way to move forward.</h2>
+        <p>One secure place to understand your options, follow every decision, and keep your loan details close.</p>
+        <div className="grid" style={{gap:12,marginTop:30}}>
+          <div className="card card-pad" style={{background:'#F8F6EF',color:'#153A35',borderColor:'rgba(255,255,255,.4)'}}><strong>Know where you stand</strong><p className="section-caption" style={{color:'#5E6D68'}}>Check eligibility and see each application update in one place.</p></div>
+          <div className="card card-pad" style={{background:'#F8F6EF',color:'#153A35',borderColor:'rgba(255,255,255,.4)'}}><strong>Stay in control</strong><p className="section-caption" style={{color:'#5E6D68'}}>Review repayment details and access your documents securely.</p></div>
+        </div>
+      </div>
+      <div className="rail-note">Clear steps. Secure records. Support when you need it.</div>
+    </aside>
+    <main className="auth-main">
+      <div className="auth-box">
+        <div className="eyebrow">CreditSea loan portal</div>
+        <h1>Start with clarity.</h1>
+        <p>Choose how you’d like to continue. Borrowers can create an account; staff can sign in to their assigned workspace.</p>
+        <div className="grid" style={{gap:12,marginTop:26}}>
+          <Link className="primary-btn" href="/signup" data-testid="link-create-account">Create borrower account <ArrowRight size={15}/></Link>
+          <Link className="secondary-btn" href="/login" data-testid="link-sign-in">Sign in to CreditSea <ArrowRight size={15}/></Link>
+        </div>
+        <p className="section-caption" style={{marginTop:20}}>Your account is protected with secure sign-in and private document storage.</p>
+      </div>
+    </main>
+  </div>;
 }
 
 function PageHeading({eyebrow,title,subtitle,action}:{eyebrow:string;title:string;subtitle:string;action?:React.ReactNode}) { return <div className="page-heading"><div><div className="eyebrow">{eyebrow}</div><h1>{title}</h1><p className="page-subtitle">{subtitle}</p></div>{action}</div>; }
@@ -291,7 +317,7 @@ function CollectionPage() {
 
 export default function Portal({page}:{page:Page}) {
  const userQuery=useGetCurrentUser({query:{queryKey:getGetCurrentUserQueryKey(),retry:false}});
- if(page==='home')return <Entry user={userQuery.data} error={userQuery.error}/>;
+ if(page==='home')return <Entry user={userQuery.data}/>;
  if(page==='login')return <AuthPage signup={false}/>;
  if(page==='signup')return <AuthPage signup/>;
  if(userQuery.isLoading)return <div style={{minHeight:'100dvh',display:'grid',placeItems:'center'}}><div className="skeleton" style={{width:220,height:18}}/></div>;

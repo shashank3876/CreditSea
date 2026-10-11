@@ -107,6 +107,11 @@ self.__SERVER_FILES_MANIFEST={
       }
     },
     "outputFileTracingRoot": "/home/runner/workspace",
+    "allowedDevOrigins": [
+      "*.pike.replit.dev",
+      "127.0.0.1",
+      "localhost"
+    ],
     "enablePrerenderSourceMaps": true,
     "cacheComponents": false,
     "cacheLife": {

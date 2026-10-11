@@ -28,10 +28,35 @@ async function start(): Promise<void> {
 }
 
 start().catch((error: unknown) => {
-  const name =
-    error && typeof error === "object" && "name" in error
-      ? String((error as { name: unknown }).name)
-      : "UnknownError";
-  logger.fatal({ errorName: name }, "API startup failed");
+  const details =
+    error && typeof error === "object"
+      ? (error as {
+          name?: unknown;
+          code?: unknown;
+          reason?: { type?: unknown };
+          cause?: {
+            name?: unknown;
+            code?: unknown;
+            codeName?: unknown;
+            syscall?: unknown;
+          };
+        })
+      : {};
+  const safeText = (value: unknown) =>
+    typeof value === "string" || typeof value === "number"
+      ? String(value).slice(0, 80)
+      : undefined;
+  logger.fatal(
+    {
+      errorName: safeText(details.name) ?? "UnknownError",
+      errorCode: safeText(details.code),
+      topologyReason: safeText(details.reason?.type),
+      causeName: safeText(details.cause?.name),
+      causeCode: safeText(details.cause?.code),
+      causeCodeName: safeText(details.cause?.codeName),
+      causeSyscall: safeText(details.cause?.syscall),
+    },
+    "API startup failed",
+  );
   process.exit(1);
 });
