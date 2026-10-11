@@ -76,11 +76,11 @@ Operations list endpoints accept validated pagination and search query parameter
 - Cookie-authenticated writes require a same-origin request.
 - PAN is encrypted with AES-256-GCM using a key derived from `SESSION_SECRET`.
 - Salary slips are limited to 5 MB and checked against their declared PDF/JPEG/PNG type and file signature.
-- Salary slips are stored in private object storage (AWS S3 in production, or Replit/local in development). MongoDB keeps a durable `objectKey`; downloads are streamed only after authorization. Do not store temporary presigned URLs in MongoDB.
+- Salary slips are stored in private object storage (AWS S3 in production, or ./local in development). MongoDB keeps a durable `objectKey`; downloads are streamed only after authorization. Do not store temporary presigned URLs in MongoDB.
 - API input is validated with generated Zod schemas; sign-in and sign-up are rate limited.
-- `.gitignore` and `.replitignore` exclude local environment secrets and private-key files while keeping `.env.example` as a placeholder template.
+- `.gitignore` and `..ignore` exclude local environment secrets and private-key files while keeping `.env.example` as a placeholder template.
 
-Keep `MONGODB_URI`, `SESSION_SECRET`, `SEED_PASSWORD`, and object-storage configuration in Replit Secrets or another secrets manager. Never commit actual values. Changing `SESSION_SECRET` invalidates active sessions and prevents decrypting previously stored PAN values; plan key rotation before changing it.
+Keep `MONGODB_URI`, `SESSION_SECRET`, `SEED_PASSWORD`, and object-storage configuration in . Secrets or another secrets manager. Never commit actual values. Changing `SESSION_SECRET` invalidates active sessions and prevents decrypting previously stored PAN values; plan key rotation before changing it.
 
 ## Configuration
 
@@ -90,9 +90,9 @@ Required at runtime:
 
 - `MONGODB_URI` — MongoDB connection string. Use a replica set or MongoDB Atlas because payment posting uses a MongoDB transaction.
 - `SESSION_SECRET` — long, random secret used for sessions and PAN encryption.
-- Private salary-slip storage: `AWS_REGION` + `AWS_S3_BUCKET` for AWS, or `PRIVATE_OBJECT_DIR` for Replit/local.
+- Private salary-slip storage: `AWS_REGION` + `AWS_S3_BUCKET` for AWS, or `PRIVATE_OBJECT_DIR` for ./local.
 
-`WEB_ORIGIN` is optional for deployments where the web app and API use different origins. For the Replit artifact setup, the API is routed at `/api` on the web app's origin.
+`WEB_ORIGIN` is optional for deployments where the web app and API use different origins. For the . artifact setup, the API is routed at `/api` on the web app's origin.
 
 ## Run and verify
 
@@ -102,7 +102,7 @@ Prerequisites are Node.js 20.9 or newer and pnpm. Install workspace dependencies
 pnpm install
 ```
 
-Use the configured Replit workflows:
+Use the configured . workflows:
 
 - API: `pnpm --filter @workspace/api-server run dev`
 - Web: `pnpm --filter @workspace/creditsea-lms run dev`
@@ -150,8 +150,8 @@ Run `pnpm --filter @workspace/api-server run seed` after setting `SEED_PASSWORD`
 
 Do not substitute preview links for verified production links.
 
-- **GitHub repository:** Not connected in this workspace; the configured Git remote is Replit's internal backup, not a GitHub repository.
+- **GitHub repository:** Not connected in this workspace; the configured Git remote is .'s internal backup, not a GitHub repository.
 - **Live application:** Not published; there is no verified production URL yet.
-- **Evaluation accounts:** The six email addresses are listed above. Accounts are not yet verified as seeded; set `SEED_PASSWORD` in Replit Secrets and run the seed command after MongoDB connectivity is restored.
+- **Evaluation accounts:** The six email addresses are listed above. Accounts are not yet verified as seeded; set `SEED_PASSWORD` in . Secrets and run the seed command after MongoDB connectivity is restored.
 - **Critical tests:** The current API unit suite passes 25 tests, and API/web typechecks and production builds pass. Database-backed authentication, upload, loan lifecycle, and payment integration tests remain unverified.
 - **Demo video:** Not recorded. A human must record and upload a 3–5 minute walkthrough after the deployed application is working.

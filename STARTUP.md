@@ -17,7 +17,6 @@ Optional:
 
 `PORT` is supplied by the configured Replit workflows. The current authentication system uses bcrypt-hashed passwords, signed HttpOnly session cookies, and server-side role checks; Firebase is not configured or required. Borrower signup always creates a borrower account, while operations access is limited by staff role.
 
-## 2. Start the Replit workflows
 
 Start both existing workflows from the Replit Workflows panel:
 
