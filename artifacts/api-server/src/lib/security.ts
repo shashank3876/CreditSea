@@ -157,6 +157,15 @@ export function requireRole(
   };
 }
 
+function allowedWebOrigins(): Set<string> {
+  return new Set(
+    (process.env.WEB_ORIGIN ?? "")
+      .split(",")
+      .map((origin) => origin.trim().replace(/\/+$/, ""))
+      .filter(Boolean),
+  );
+}
+
 export function enforceSameOriginForCookieWrites(
   req: Request,
   res: Response,
@@ -177,13 +186,21 @@ export function enforceSameOriginForCookieWrites(
   const forwardedProto = req.get("x-forwarded-proto")?.split(",")[0]?.trim();
   const protocol = forwardedProto || req.protocol;
 
-  if (!origin || !host) {
+  if (!origin) {
     res.status(403).json({ error: "Request origin could not be verified.", code: "CSRF_REJECTED" });
     return;
   }
   try {
     const parsedOrigin = new URL(origin);
-    if (parsedOrigin.host !== host || parsedOrigin.protocol !== `${protocol}:`) {
+    const normalizedOrigin = origin.replace(/\/+$/, "");
+    // Same host/proto (direct or correctly forwarded proxy).
+    const matchesRequestHost =
+      Boolean(host) &&
+      parsedOrigin.host === host &&
+      parsedOrigin.protocol === `${protocol}:`;
+    // Vercel/external rewrites change Host to the API target; allow configured web origins.
+    const matchesConfiguredWebOrigin = allowedWebOrigins().has(normalizedOrigin);
+    if (!matchesRequestHost && !matchesConfiguredWebOrigin) {
       res.status(403).json({ error: "Request origin could not be verified.", code: "CSRF_REJECTED" });
       return;
     }
