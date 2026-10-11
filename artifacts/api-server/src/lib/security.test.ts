@@ -157,6 +157,34 @@ test("same-origin guard rejects cross-origin and origin-less cookie writes", () 
   }
 });
 
+test("same-origin guard accepts cookie writes from configured WEB_ORIGIN behind a rewrite proxy", () => {
+  const previous = process.env.WEB_ORIGIN;
+  process.env.WEB_ORIGIN = "https://credit-sea-1u8d.vercel.app";
+  try {
+    let calledNext = false;
+    const recorder = responseRecorder();
+    enforceSameOriginForCookieWrites(
+      csrfRequest({
+        origin: "https://credit-sea-1u8d.vercel.app",
+        host: "13.232.233.127:8080",
+        protocol: "http",
+        cookie: "session",
+      }),
+      recorder.response,
+      () => {
+        calledNext = true;
+      },
+    );
+    assert.equal(calledNext, true);
+  } finally {
+    if (previous === undefined) {
+      delete process.env.WEB_ORIGIN;
+    } else {
+      process.env.WEB_ORIGIN = previous;
+    }
+  }
+});
+
 test("same-origin guard leaves unauthenticated sign-up and sign-in requests available", () => {
   let calledNext = false;
   const recorder = responseRecorder();
