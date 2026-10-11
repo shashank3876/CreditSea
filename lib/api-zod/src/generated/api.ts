@@ -438,6 +438,30 @@ export const DownloadBorrowerSalarySlipResponse = zod.unknown()
 
 
 /**
+ * @summary List payments on a loan owned by the signed-in borrower
+ */
+export const listBorrowerLoanPaymentsPathIdRegExp = new RegExp('^[a-fA-F0-9]{24}$');
+
+
+export const ListBorrowerLoanPaymentsParams = zod.object({
+  "id": zod.coerce.string().regex(listBorrowerLoanPaymentsPathIdRegExp)
+})
+
+export const ListBorrowerLoanPaymentsResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "loanId": zod.string(),
+  "borrowerId": zod.string(),
+  "utr": zod.string(),
+  "amountPaise": zod.number().int(),
+  "paymentDate": zod.coerce.date(),
+  "recordedBy": zod.string(),
+  "createdAt": zod.coerce.date()
+}))
+})
+
+
+/**
  * @summary Find registered borrowers without active or historical applications
  */
 export const listSalesLeadsQueryPageDefault = 1;
@@ -461,11 +485,52 @@ export const ListSalesLeadsResponse = zod.object({
   "name": zod.string(),
   "email": zod.string().email(),
   "registeredAt": zod.coerce.date(),
-  "status": zod.literal("REGISTERED_NOT_APPLIED")
+  "status": zod.literal("REGISTERED_NOT_APPLIED"),
+  "contactedAt": zod.coerce.date().nullable(),
+  "contactedBy": zod.string().nullable(),
+  "notes": zod.array(zod.object({
+  "note": zod.string(),
+  "recordedBy": zod.string(),
+  "recordedAt": zod.coerce.date()
+}))
 })),
   "page": zod.number().int(),
   "pageSize": zod.number().int(),
   "total": zod.number().int()
+})
+
+
+/**
+ * @summary Record a sales follow-up note and mark the lead as contacted
+ */
+export const addSalesLeadNotePathIdRegExp = new RegExp('^[a-fA-F0-9]{24}$');
+
+
+export const AddSalesLeadNoteParams = zod.object({
+  "id": zod.coerce.string().regex(addSalesLeadNotePathIdRegExp)
+})
+
+export const addSalesLeadNoteBodyNoteMax = 1000;
+
+
+
+export const AddSalesLeadNoteBody = zod.object({
+  "note": zod.string().min(1).max(addSalesLeadNoteBodyNoteMax)
+})
+
+export const AddSalesLeadNoteResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "email": zod.string().email(),
+  "registeredAt": zod.coerce.date(),
+  "status": zod.literal("REGISTERED_NOT_APPLIED"),
+  "contactedAt": zod.coerce.date().nullable(),
+  "contactedBy": zod.string().nullable(),
+  "notes": zod.array(zod.object({
+  "note": zod.string(),
+  "recordedBy": zod.string(),
+  "recordedAt": zod.coerce.date()
+}))
 })
 
 

@@ -302,12 +302,31 @@ export interface LoanListResponse {
   total: number;
 }
 
+export interface LeadNote {
+  note: string;
+  recordedBy: string;
+  recordedAt: string;
+}
+
+export interface SalesLeadNoteInput {
+  /**
+     * @minLength 1
+     * @maxLength 1000
+     */
+  note: string;
+}
+
 export interface Lead {
   id: string;
   name: string;
   email: string;
   registeredAt: string;
   status: 'REGISTERED_NOT_APPLIED';
+  /** @nullable */
+  contactedAt: string | null;
+  /** @nullable */
+  contactedBy: string | null;
+  notes: LeadNote[];
 }
 
 export interface LeadListResponse {

@@ -1,18 +1,18 @@
 'use client';
 
 import {
-  useApproveLoan, useApplyForLoan, useCheckBorrowerEligibility, useCreateEmployee, useDisburseLoan,
+  useAddSalesLeadNote, useApproveLoan, useApplyForLoan, useCheckBorrowerEligibility, useCreateEmployee, useDisburseLoan,
   useDownloadBorrowerSalarySlip, useDownloadSanctionSalarySlip, useGetBorrowerLoan, useGetBorrowerProfile,
-  useGetCurrentUser, useGetDashboardStats, useListBorrowerLoans, useListCollectionLoans,
+  useGetCurrentUser, useGetDashboardStats, useListBorrowerLoanPayments, useListBorrowerLoans, useListCollectionLoans,
   useListDisbursementLoans, useListEmployees, useListLoanPayments, useListSalesLeads,
   useListSanctionLoans, useLogIn, useLogOut, useRecordLoanPayment,
   useRejectLoan, useSignUp, useUpdateBorrowerProfile, useUpdateEmployeeStatus,
   getGetBorrowerProfileQueryKey, getGetCurrentUserQueryKey, getGetDashboardStatsQueryKey,
   getDownloadSanctionSalarySlipQueryKey,
-  getListBorrowerLoansQueryKey, getListCollectionLoansQueryKey, getListDisbursementLoansQueryKey,
+  getListBorrowerLoanPaymentsQueryKey, getListBorrowerLoansQueryKey, getListCollectionLoansQueryKey, getListDisbursementLoansQueryKey,
   getListEmployeesQueryKey, getListLoanPaymentsQueryKey, getListSalesLeadsQueryKey, getListSanctionLoansQueryKey,
 } from '@workspace/api-client-react';
-import type { BorrowerProfileInput, EmployeeCreateInput, EmployeeRole, Loan, PaymentInput, User, UserRole } from '@workspace/api-client-react';
+import type { BorrowerProfileInput, EmployeeCreateInput, EmployeeRole, Lead, Loan, PaymentInput, User, UserRole } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   Activity, ArrowRight, BadgeCheck, Banknote, Check, CheckCircle2, ChevronRight, ClipboardList,
@@ -178,23 +178,47 @@ function LoansTable({items,onSelect,actions}:{items:Loan[];onSelect:(l:Loan)=>vo
   if(!items.length) return <Empty title="Nothing in this queue" copy="New records will appear here as they move through the CreditSea process." />;
   return <div className="table-wrap"><table><thead><tr><th>Borrower</th><th>Loan reference</th><th>Amount</th><th>Tenure</th><th>Status</th><th> </th></tr></thead><tbody>{items.map(l=><tr key={l.id} data-testid={`row-loan-${l.id}`}><td><div style={{fontWeight:700}}>{l.borrowerName}</div><div className="helper">{l.borrowerEmail}</div></td><td className="mono">{l.reference}</td><td className="currency">{fmtINR(l.principalPaise)}</td><td>{l.tenureDays} days</td><td><Status value={l.status}/></td><td>{actions?actions(l):<button className="text-btn" onClick={()=>onSelect(l)} data-testid={`button-view-loan-${l.id}`}>Details <ChevronRight size={14}/></button>}</td></tr>)}</tbody></table></div>;
 }
-function LeadTable({items,onSelect}:{items:{id:string;name:string;email:string;registeredAt:string;status:string}[];onSelect:(lead:{id:string;name:string;email:string;registeredAt:string;status:string})=>void}) {
+function LeadTable({items,onSelect}:{items:Lead[];onSelect:(lead:Lead)=>void}) {
   if(!items.length)return <Empty title="No unapplied leads" copy="Registered borrowers without a loan application will appear here." />;
-  return <div className="table-wrap"><table><thead><tr><th>Borrower</th><th>Registered</th><th>Status</th><th></th></tr></thead><tbody>{items.map(x=><tr key={x.id} data-testid={`row-lead-${x.id}`}><td><div style={{fontWeight:700}}>{x.name}</div><div className="helper">{x.email}</div></td><td>{fmtDate(x.registeredAt)}</td><td><Status value={x.status}/></td><td><button className="text-btn" onClick={()=>onSelect(x)} data-testid={`button-view-lead-${x.id}`}>View <ChevronRight size={14}/></button></td></tr>)}</tbody></table></div>;
+  return <div className="table-wrap"><table><thead><tr><th>Borrower</th><th>Registered</th><th>Contact</th><th>Status</th><th></th></tr></thead><tbody>{items.map(x=><tr key={x.id} data-testid={`row-lead-${x.id}`}><td><div style={{fontWeight:700}}>{x.name}</div><div className="helper">{x.email}</div></td><td>{fmtDate(x.registeredAt)}</td><td>{x.contactedAt?<div><div style={{fontWeight:600}}>Contacted</div><div className="helper">{fmtDate(x.contactedAt)}{x.contactedBy?` · ${x.contactedBy}`:''}</div></div>:<span className="helper">Not contacted</span>}</td><td><Status value={x.status}/></td><td><button className="text-btn" onClick={()=>onSelect(x)} data-testid={`button-view-lead-${x.id}`}>View <ChevronRight size={14}/></button></td></tr>)}</tbody></table></div>;
+}
+function LoanTimeline({loan}:{loan:Loan}) {
+  const rejected=loan.status==='REJECTED';
+  const sanctioned=['SANCTIONED','DISBURSED','CLOSED'].includes(loan.status);
+  const disbursed=['DISBURSED','CLOSED'].includes(loan.status);
+  const hasPayments=loan.totalPaidPaise>0;
+  const closed=loan.status==='CLOSED';
+  const stages=rejected
+    ? [
+        {label:'Applied',done:true,meta:fmtDate(loan.createdAt)},
+        {label:'Rejected',done:true,meta:loan.rejectionReason?`Reason on file · ${fmtDate(loan.updatedAt)}`:fmtDate(loan.updatedAt)},
+      ]
+    : [
+        {label:'Applied',done:true,meta:fmtDate(loan.createdAt)},
+        {label:'Sanctioned',done:sanctioned,meta:sanctioned?`${fmtDate(loan.sanctionedAt)}${loan.sanctionedBy?` · ${loan.sanctionedBy}`:''}`:'Awaiting review'},
+        {label:'Disbursed',done:disbursed,meta:disbursed?`${fmtDate(loan.disbursedAt)}${loan.disbursedBy?` · ${loan.disbursedBy}`:''}`:'Pending release'},
+        {label:'Payments',done:hasPayments,meta:hasPayments?`${fmtINR(loan.totalPaidPaise)} paid`:'No receipts yet'},
+        {label:'Closed',done:closed,meta:closed?fmtDate(loan.updatedAt):'Outstanding balance'},
+      ];
+  return <div className="timeline" data-testid="loan-timeline" aria-label="Loan timeline">{stages.map(stage=><div key={stage.label} className={`timeline-item${stage.done?' done':''}`}><div>{stage.label}</div><div className="timeline-meta">{stage.meta}</div></div>)}</div>;
 }
 function LoansDialog({loan,onClose}:{loan:Loan;onClose:()=>void}) {
   const {data,error,isLoading,refetch}=useGetBorrowerLoan(loan.id,{query:{queryKey:[`/api/borrower/loans/${loan.id}`]}});
+  const payments=useListBorrowerLoanPayments(loan.id,{query:{queryKey:getListBorrowerLoanPaymentsQueryKey(loan.id)}});
   const download=useDownloadBorrowerSalarySlip(loan.id,{query:{enabled:false,queryKey:[`/api/borrower/loans/${loan.id}/salary-slip`]}});
   const queryClient=useQueryClient();
   const current=data||loan;
+  const showPayments=['DISBURSED','CLOSED'].includes(current.status);
   const onDownload=async()=>{const result=await download.refetch();if(result.data){const url=URL.createObjectURL(result.data);const a=document.createElement('a');a.href=url;a.download=`salary-slip-${loan.reference}`;a.click();URL.revokeObjectURL(url);}};
   return <Dialog title={loan.reference} onClose={onClose}><div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}><div><div className="section-caption">Application status</div><div style={{marginTop:8}}><Status value={current.status}/></div></div><div style={{textAlign:'right'}}><div className="section-caption">Loan amount</div><div className="section-title" style={{marginTop:6}}>{fmtINR(current.principalPaise)}</div></div></div>
     {isLoading?<LoadingRows count={2}/>:error?<div className="notice error" role="alert">{getError(error)} <button className="text-btn" onClick={()=>refetch()}>Retry</button></div>:null}
+    <LoanTimeline loan={current}/>
     <div className="separator"/>
-    <div className="grid" style={{gridTemplateColumns:'1fr 1fr',gap:14}}><div><div className="helper">Interest rate</div><strong>{current.interestRatePercent}%</strong></div><div><div className="helper">Tenure</div><strong>{current.tenureDays} days</strong></div><div><div className="helper">Total repayment</div><strong>{fmtINR(current.totalRepaymentPaise)}</strong></div><div><div className="helper">Outstanding</div><strong>{fmtINR(current.outstandingBalancePaise)}</strong></div></div>
+    <div className="grid" style={{gridTemplateColumns:'1fr 1fr',gap:14}}><div><div className="helper">Interest rate</div><strong>{current.interestRatePercent}%</strong></div><div><div className="helper">Tenure</div><strong>{current.tenureDays} days</strong></div><div><div className="helper">Total repayment</div><strong>{fmtINR(current.totalRepaymentPaise)}</strong></div><div><div className="helper">Paid to date</div><strong>{fmtINR(current.totalPaidPaise)}</strong></div><div><div className="helper">Outstanding</div><strong style={{color:'#1d655b'}}>{fmtINR(current.outstandingBalancePaise)}</strong></div></div>
     {current.rejectionReason&&<div className="notice error" style={{marginTop:18}}>Reason: {current.rejectionReason}</div>}
+    {showPayments&&<div style={{marginTop:18}} data-testid="borrower-payments"><h3 className="section-title">Payment history</h3><p className="section-caption">Receipts recorded against this loan.</p>{payments.isLoading?<LoadingRows count={2}/>:payments.error?<QueryError error={payments.error} retry={()=>payments.refetch()}/>:!payments.data?.items.length?<p className="section-caption" style={{marginTop:8}}>No payments have been recorded yet.</p>:<div style={{maxHeight:160,overflow:'auto',marginTop:8}}>{payments.data.items.map(p=><div key={p.id} className="list-row" data-testid={`borrower-payment-${p.id}`}><div><div className="list-primary">{fmtDate(p.paymentDate)} · {p.utr}</div><div className="list-secondary">Recorded by {p.recordedBy}</div></div><strong>{fmtINR(p.amountPaise)}</strong></div>)}</div>}</div>}
     {current.status==='DISBURSED'&&<div style={{marginTop:20}}><button className="secondary-btn" onClick={onDownload} disabled={download.isFetching||!current.salarySlipAvailable} data-testid="button-download-slip"><Download size={14}/>{download.isFetching?'Preparing…':'Download salary slip'}</button>{download.error&&<div className="notice error" style={{marginTop:8}}>{getError(download.error)}</div>}</div>}
-    <div className="form-actions"><button className="secondary-btn" onClick={()=>{queryClient.invalidateQueries({queryKey:[`/api/borrower/loans/${loan.id}`]});onClose();}}>Done</button></div>
+    <div className="form-actions"><button className="secondary-btn" onClick={()=>{queryClient.invalidateQueries({queryKey:[`/api/borrower/loans/${loan.id}`]});queryClient.invalidateQueries({queryKey:getListBorrowerLoanPaymentsQueryKey(loan.id)});onClose();}}>Done</button></div>
   </Dialog>;
 }
 function Dialog({title,onClose,children}:{title:string;onClose:()=>void;children:ReactNode}) {
@@ -283,13 +307,20 @@ function OperationsOverview({role}:{role:User['role']}) {
 }
 
 function LeadsPage() {
- const [search,setSearch]=useState(''),[page,setPage]=useState(1),[selected,setSelected]=useState<{id:string;name:string;email:string;registeredAt:string;status:string}|null>(null);
+ const qc=useQueryClient(),[search,setSearch]=useState(''),[page,setPage]=useState(1),[selected,setSelected]=useState<Lead|null>(null),[note,setNote]=useState('');
  const params=useMemo(()=>({page,pageSize:10,search:search.trim()||undefined}),[page,search]);
- const q=useListSalesLeads(params);
+ const q=useListSalesLeads(params),addNote=useAddSalesLeadNote();
+ const closeLead=()=>{setSelected(null);setNote('');};
+ const saveNote=()=>{if(!selected||!note.trim())return;addNote.mutate({id:selected.id,data:{note:note.trim()}},{onSuccess:(lead)=>{setSelected(lead);setNote('');qc.invalidateQueries({queryKey:getListSalesLeadsQueryKey(params)});}});};
  return <><PageHeading eyebrow="Sales workspace" title="A conversation can start here." subtitle="Registered borrowers who haven’t started a loan application yet."/>
   <section className="card"><div className="card-head"><div><h2 className="section-title">Unapplied leads</h2><p className="section-caption">{q.data?.total??0} registered borrowers</p></div><div className="filter-row"><div className="search-wrap"><Search className="search-icon"/><input className="input" type="search" placeholder="Search name or email" value={search} onChange={e=>{setSearch(e.target.value);setPage(1);}} aria-label="Search leads" data-testid="input-search-leads"/></div></div></div>
-  {q.isLoading?<LoadingRows/>:q.error?<QueryError error={q.error} retry={()=>q.refetch()}/>:<><LeadTable items={q.data?.items||[]} onSelect={setSelected}/><Pagination page={page} pageSize={q.data?.pageSize||10} total={q.data?.total||0} onChange={setPage}/></>}</section>
-  {selected&&<Dialog title={selected.name} onClose={()=>setSelected(null)}><div className="section-caption">Registered borrower</div><div className="list-row"><span>Email</span><strong>{selected.email}</strong></div><div className="list-row"><span>Registered</span><strong>{fmtDate(selected.registeredAt)}</strong></div><div className="list-row"><span>Current status</span><Status value={selected.status}/></div><div className="notice info" style={{marginTop:16}}>This borrower has not applied for a loan. Reach out through your approved channels.</div></Dialog>}
+  {q.isLoading?<LoadingRows/>:q.error?<QueryError error={q.error} retry={()=>q.refetch()}/>:<><LeadTable items={q.data?.items||[]} onSelect={(lead)=>{setSelected(lead);setNote('');}}/><Pagination page={page} pageSize={q.data?.pageSize||10} total={q.data?.total||0} onChange={setPage}/></>}</section>
+  {selected&&<Dialog title={selected.name} onClose={closeLead}><div className="section-caption">Registered borrower</div><div className="list-row"><span>Email</span><strong>{selected.email}</strong></div><div className="list-row"><span>Registered</span><strong>{fmtDate(selected.registeredAt)}</strong></div><div className="list-row"><span>Current status</span><Status value={selected.status}/></div><div className="list-row"><span>Contacted</span><strong>{selected.contactedAt?`${fmtDate(selected.contactedAt)}${selected.contactedBy?` · ${selected.contactedBy}`:''}`:'Not yet'}</strong></div>
+  <div className="separator"/><h3 className="section-title">Follow-up notes</h3>
+  {selected.notes.length?<div style={{maxHeight:140,overflow:'auto',marginTop:8}} data-testid="lead-notes">{selected.notes.map((entry,index)=><div key={`${entry.recordedAt}-${index}`} className="list-row"><div><div className="list-primary">{entry.note}</div><div className="list-secondary">{fmtDate(entry.recordedAt)} · {entry.recordedBy}</div></div></div>)}</div>:<p className="section-caption" style={{marginTop:8}}>No notes yet. Record the first outreach below.</p>}
+  <div className="field" style={{marginTop:16}}><label htmlFor="sales-note">Add note</label><textarea id="sales-note" className="textarea" rows={3} minLength={1} maxLength={1000} value={note} onChange={e=>setNote(e.target.value)} placeholder="What did you discuss? When will you follow up?" data-testid="input-sales-note"/></div>
+  {addNote.error&&<div className="notice error" style={{marginTop:12}} role="alert">{getError(addNote.error)}</div>}
+  <div className="form-actions"><button className="secondary-btn" onClick={closeLead}>Close</button><button className="primary-btn" onClick={saveNote} disabled={addNote.isPending||!note.trim()} data-testid="button-save-sales-note">{addNote.isPending?'Saving…':'Save note & mark contacted'}</button></div></Dialog>}
  </>;
 }
 function Pagination({page,pageSize,total,onChange}:{page:number;pageSize:number;total:number;onChange:(n:number)=>void}) { const pages=Math.max(1,Math.ceil(total/pageSize));return <div className="pagination"><span>Showing {total?((page-1)*pageSize+1):0}–{Math.min(page*pageSize,total)} of {total}</span><div className="pagination-controls"><button onClick={()=>onChange(page-1)} disabled={page<=1} aria-label="Previous page">Previous</button><button onClick={()=>onChange(page+1)} disabled={page>=pages} aria-label="Next page">Next</button></div></div>; }

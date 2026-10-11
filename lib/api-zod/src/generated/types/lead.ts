@@ -5,6 +5,7 @@
  * CreditSea loan origination and servicing API
  * OpenAPI spec version: 0.2.0
  */
+import type { LeadNote } from './leadNote';
 
 export interface Lead {
   id: string;
@@ -12,4 +13,9 @@ export interface Lead {
   email: string;
   registeredAt: Date;
   status: 'REGISTERED_NOT_APPLIED';
+  /** @nullable */
+  contactedAt: Date | null;
+  /** @nullable */
+  contactedBy: string | null;
+  notes: LeadNote[];
 }

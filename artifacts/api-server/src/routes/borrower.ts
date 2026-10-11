@@ -10,6 +10,8 @@ import {
   GetBorrowerLoanParams,
   GetBorrowerLoanResponse,
   GetBorrowerProfileResponse,
+  ListBorrowerLoanPaymentsParams,
+  ListBorrowerLoanPaymentsResponse,
   ListBorrowerLoansResponse,
   UpdateBorrowerProfileBody,
   UpdateBorrowerProfileResponse,
@@ -22,8 +24,8 @@ import {
 } from "../lib/uploadValidation";
 import { checkEligibility, calculateLoanAmounts } from "../lib/domain";
 import { HttpError } from "../lib/errors";
-import { loanDto, maskPan, profileDto, salarySlipDto } from "../lib/dto";
-import { Loan, SalarySlip, User } from "../lib/models";
+import { loanDto, maskPan, paymentDto, profileDto, salarySlipDto } from "../lib/dto";
+import { Loan, Payment, SalarySlip, User } from "../lib/models";
 import {
   createSalarySlipObjectKey,
   deletePrivateObject,
@@ -361,6 +363,31 @@ router.get(
       salarySlip.contentType,
       salarySlip.fileName,
       res,
+    );
+  },
+);
+
+router.get(
+  "/borrower/loans/:id/payments",
+  requireAuth,
+  requireRole("BORROWER"),
+  async (req, res) => {
+    const { id } = validate(ListBorrowerLoanPaymentsParams, req.params);
+    const loan = await Loan.findOne({
+      _id: id,
+      borrowerId: req.currentUser!.id,
+    }).exec();
+    if (!loan) throw new HttpError(404, "Loan not found.", "NOT_FOUND");
+    const payments = await Payment.find({
+      loanId: id,
+      borrowerId: req.currentUser!.id,
+    })
+      .sort({ paymentDate: -1, createdAt: -1 })
+      .exec();
+    res.json(
+      ListBorrowerLoanPaymentsResponse.parse({
+        items: payments.map(paymentDto),
+      }),
     );
   },
 );
