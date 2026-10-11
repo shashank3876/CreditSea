@@ -3,10 +3,8 @@
   "include": [
     "next-env.d.ts",
     ".next/types/**/*.ts",
-    "src/app/**/*",
-    "src/components/portal.tsx",
-    "src/components/error-boundary.tsx",
-    "src/lib/utils.ts"
+    "src/**/*.ts",
+    "src/**/*.tsx"
   ],
   "exclude": ["node_modules", "build", "dist", "out", "**/*.test.ts"],
   "compilerOptions": {
@@ -18,13 +16,11 @@
     "moduleResolution": "bundler",
     "types": ["node"],
     "plugins": [{ "name": "next" }],
+    "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@workspace/api-client-react": ["../../lib/api-client-react/src/index.ts"],
+      "@workspace/api-client-react/*": ["../../lib/api-client-react/src/*"]
     }
-  },
-  "references": [
-    {
-      "path": "../../lib/api-client-react"
-    }
-  ]
+  }
 }
