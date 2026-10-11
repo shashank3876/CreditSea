@@ -4,6 +4,8 @@
 dist
 tmp
 out-tsc
+out/
+.next/
 *.tsbuildinfo
 .expo
 .expo-shared
@@ -36,6 +38,13 @@ npm-debug.log
 yarn-error.log
 testem.log
 /typings
+
+# Environment files and private keys (keep the placeholder template tracked).
+.env
+.env.*
+!.env.example
+*.pem
+*.key
 
 # System Files
 .DS_Store
