@@ -32,7 +32,11 @@ function assertObjectKey(objectKey: string): void {
   }
 }
 
-/** Durable key stored in MongoDB. Never store temporary signed URLs. */
+/**
+ * Durable private storage key stored in MongoDB.
+ * Uses a random UUID so the original client filename is never used as the
+ * object name. Never store temporary signed URLs.
+ */
 export function createSalarySlipObjectKey(): string {
   return `${PRIVATE_OBJECT_PREFIX}uploads/${randomUUID()}`;
 }

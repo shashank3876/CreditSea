@@ -264,6 +264,16 @@ test("salary-slip validation rejects spoofed, unsupported, and oversized files",
   assert.throws(
     () =>
       validateSalarySlipFile({
+        originalName: "slip.pdf.exe",
+        contentType: "application/pdf",
+        sizeBytes: 16,
+        contents: Buffer.from("%PDF-1.7 test"),
+      }),
+    RangeError,
+  );
+  assert.throws(
+    () =>
+      validateSalarySlipFile({
         originalName: "slip.pdf",
         contentType: "application/pdf",
         sizeBytes: MAX_SALARY_SLIP_BYTES + 1,

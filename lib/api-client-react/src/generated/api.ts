@@ -35,6 +35,7 @@ import type {
   ErrorResponse,
   ForbiddenResponse,
   HealthStatus,
+  Lead,
   LeadListResponse,
   ListCollectionLoansParams,
   ListDisbursementLoansParams,
@@ -52,6 +53,7 @@ import type {
   PaymentResult,
   SalarySlip,
   SalarySlipInput,
+  SalesLeadNoteInput,
   SanctionApprovalInput,
   SanctionRejectionInput,
   SignupInput,
@@ -1138,6 +1140,83 @@ export function useDownloadBorrowerSalarySlip<TData = Awaited<ReturnType<typeof 
 
 
 
+export const getListBorrowerLoanPaymentsUrl = (id: string,) => {
+
+
+
+
+  return `/api/borrower/loans/${id}/payments`
+}
+
+/**
+ * @summary List payments on a loan owned by the signed-in borrower
+ */
+export const listBorrowerLoanPayments = async (id: string, options?: Parameters<typeof customFetch>[1]): Promise<PaymentListResponse> => {
+
+  return customFetch<PaymentListResponse>(getListBorrowerLoanPaymentsUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListBorrowerLoanPaymentsQueryKey = (id: string,) => {
+    return [
+    `/api/borrower/loans/${id}/payments`
+    ] as const;
+    }
+
+
+export const getListBorrowerLoanPaymentsQueryOptions = <TData = Awaited<ReturnType<typeof listBorrowerLoanPayments>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>>(id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listBorrowerLoanPayments>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListBorrowerLoanPaymentsQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listBorrowerLoanPayments>>> = ({ signal }) => listBorrowerLoanPayments(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listBorrowerLoanPayments>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListBorrowerLoanPaymentsQueryResult = NonNullable<Awaited<ReturnType<typeof listBorrowerLoanPayments>>>
+export type ListBorrowerLoanPaymentsQueryError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>
+
+
+/**
+ * @summary List payments on a loan owned by the signed-in borrower
+ */
+
+export function useListBorrowerLoanPayments<TData = Awaited<ReturnType<typeof listBorrowerLoanPayments>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>>(
+ id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listBorrowerLoanPayments>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListBorrowerLoanPaymentsQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getListSalesLeadsUrl = (params?: ListSalesLeadsParams,) => {
   const normalizedParams = new URLSearchParams();
 
@@ -1221,6 +1300,95 @@ export function useListSalesLeads<TData = Awaited<ReturnType<typeof listSalesLea
 
 
 
+
+export const getAddSalesLeadNoteUrl = (id: string,) => {
+
+
+
+
+  return `/api/operations/sales/leads/${id}/notes`
+}
+
+/**
+ * @summary Record a sales follow-up note and mark the lead as contacted
+ */
+export const addSalesLeadNote = async (id: string,
+    salesLeadNoteInput: SalesLeadNoteInput, options?: Parameters<typeof customFetch>[1]): Promise<Lead> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<Lead>(getAddSalesLeadNoteUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(salesLeadNoteInput)
+  }
+);}
+
+
+
+
+
+export const getAddSalesLeadNoteMutationKey = () => ['addSalesLeadNote'] as const;
+
+export const getAddSalesLeadNoteMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addSalesLeadNote>>, TError,AddSalesLeadNoteMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof addSalesLeadNote>>, TError,AddSalesLeadNoteMutationVariables, TContext> => {
+
+const mutationKey = getAddSalesLeadNoteMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof addSalesLeadNote>>, AddSalesLeadNoteMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  addSalesLeadNote(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AddSalesLeadNoteMutationResult = NonNullable<Awaited<ReturnType<typeof addSalesLeadNote>>>
+    export type AddSalesLeadNoteMutationBody = BodyType<SalesLeadNoteInput>
+    export type AddSalesLeadNoteMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse>
+    export type AddSalesLeadNoteMutationVariables = {id: string;data: BodyType<SalesLeadNoteInput>}
+
+    /**
+ * @summary Record a sales follow-up note and mark the lead as contacted
+ */
+export const useAddSalesLeadNote = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addSalesLeadNote>>, TError,AddSalesLeadNoteMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof addSalesLeadNote>>,
+        TError,
+        AddSalesLeadNoteMutationVariables,
+        TContext
+      > => {
+      return useMutation(getAddSalesLeadNoteMutationOptions(options));
+    }
 
 export const getListSanctionLoansUrl = (params?: ListSanctionLoansParams,) => {
   const normalizedParams = new URLSearchParams();

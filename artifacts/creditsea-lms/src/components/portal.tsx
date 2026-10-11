@@ -1,27 +1,28 @@
 'use client';
 
 import {
-  useApproveLoan, useApplyForLoan, useCheckBorrowerEligibility, useCreateEmployee, useDisburseLoan,
+  useAddSalesLeadNote, useApproveLoan, useApplyForLoan, useCheckBorrowerEligibility, useCreateEmployee, useDisburseLoan,
   useDownloadBorrowerSalarySlip, useDownloadSanctionSalarySlip, useGetBorrowerLoan, useGetBorrowerProfile,
-  useGetCurrentUser, useGetDashboardStats, useListBorrowerLoans, useListCollectionLoans,
+  useGetCurrentUser, useGetDashboardStats, useListBorrowerLoanPayments, useListBorrowerLoans, useListCollectionLoans,
   useListDisbursementLoans, useListEmployees, useListLoanPayments, useListSalesLeads,
   useListSanctionLoans, useLogIn, useLogOut, useRecordLoanPayment,
-  useRejectLoan, useSignUp, useUpdateBorrowerProfile, useUpdateEmployeeStatus, useUploadSalarySlip,
+  useRejectLoan, useSignUp, useUpdateBorrowerProfile, useUpdateEmployeeStatus,
   getGetBorrowerProfileQueryKey, getGetCurrentUserQueryKey, getGetDashboardStatsQueryKey,
   getDownloadSanctionSalarySlipQueryKey,
-  getListBorrowerLoansQueryKey, getListCollectionLoansQueryKey, getListDisbursementLoansQueryKey,
+  getListBorrowerLoanPaymentsQueryKey, getListBorrowerLoansQueryKey, getListCollectionLoansQueryKey, getListDisbursementLoansQueryKey,
   getListEmployeesQueryKey, getListLoanPaymentsQueryKey, getListSalesLeadsQueryKey, getListSanctionLoansQueryKey,
 } from '@workspace/api-client-react';
-import type { BorrowerProfileInput, EmployeeCreateInput, EmployeeRole, Loan, PaymentInput, User, UserRole } from '@workspace/api-client-react';
+import type { BorrowerProfileInput, EmployeeCreateInput, EmployeeRole, Lead, Loan, PaymentInput, User, UserRole } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   Activity, ArrowRight, BadgeCheck, Banknote, Check, CheckCircle2, ChevronRight, ClipboardList,
-  Eye, EyeOff, FileCheck2, FileText, HandCoins, Home, LogOut, Search, ShieldCheck, Upload, UserPlus, Users, Wallet, X,
+  Eye, EyeOff, FileCheck2, HandCoins, Home, LogOut, Search, ShieldCheck, UserPlus, Users, Wallet, X,
   AlertCircle, LoaderCircle, Download, Phone,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { type FormEvent, type InputHTMLAttributes, type ReactNode, useEffect, useId, useMemo, useState } from 'react';
+import { SalarySlipUpload } from '@/components/salary-slip-upload';
 
 type Page = 'home'|'login'|'signup'|'borrower'|'borrower-loans'|'operations'|'sales'|'sanction'|'disbursement'|'collection'|'employees';
 const PAGE_ROLES: Record<Exclude<Page, 'home'|'login'|'signup'>, readonly UserRole[]> = {
@@ -117,9 +118,11 @@ function AppShell({page, user, children}:{page:Page;user?:User;children:ReactNod
 function AuthPage({signup}:{signup:boolean}) {
   const router=useRouter(), queryClient=useQueryClient();
   const signUp=useSignUp(), logIn=useLogIn();
-  const [name,setName]=useState(''),[email,setEmail]=useState(''),[password,setPassword]=useState('');
+  const [name,setName]=useState(''),[email,setEmail]=useState(''),[password,setPassword]=useState(''),[confirmPassword,setConfirmPassword]=useState('');
   const mutation=signup?signUp:logIn, error=mutation.error;
-  const submit=(e:FormEvent)=>{e.preventDefault(); if(signup) signUp.mutate({data:{name,email,password}},{onSuccess:(response)=>{queryClient.setQueryData(getGetCurrentUserQueryKey(),response.user);router.push('/borrower');}}); else logIn.mutate({data:{email,password}},{onSuccess:(response)=>{queryClient.setQueryData(getGetCurrentUserQueryKey(),response.user);router.push(response.user.role==='BORROWER'?'/borrower':'/operations');}});};
+  const passwordsMatch=!signup||(password.length>0&&password===confirmPassword);
+  const passwordMismatch=signup&&confirmPassword.length>0&&password!==confirmPassword;
+  const submit=(e:FormEvent)=>{e.preventDefault(); if(signup&&!passwordsMatch)return; if(signup) signUp.mutate({data:{name,email,password}},{onSuccess:(response)=>{queryClient.setQueryData(getGetCurrentUserQueryKey(),response.user);router.push('/borrower');}}); else logIn.mutate({data:{email,password}},{onSuccess:(response)=>{queryClient.setQueryData(getGetCurrentUserQueryKey(),response.user);router.push(response.user.role==='BORROWER'?'/borrower':'/operations');}});};
   return <div className="auth-page">
     <aside className="auth-aside"><Link className="brand-row" href="/"><span className="brand-mark">C</span><span><span className="brand-name">creditsea</span><span className="brand-sub">Finance, made clear</span></span></Link><div className="aside-copy"><div className="eyebrow">A more human way to borrow</div><h2>Money moves.<br/>Make your next<br/>move with clarity.</h2><p>Thoughtful credit, transparent terms, and a team that’s with you at every step.</p></div><div className="aside-foot">Secure by design · Built for India</div></aside>
     <main className="auth-main"><div className="auth-box"><div className="eyebrow">{signup?'Get started':'Welcome back'}</div><h1>{signup?'A little about you.':'Good to see you again.'}</h1><p>{signup?'Create your secure CreditSea account. It takes less than a minute.':'Sign in to pick up where you left off.'}</p>
@@ -127,8 +130,9 @@ function AuthPage({signup}:{signup:boolean}) {
         {signup&&<div className="field"><label htmlFor="full-name">Full name</label><input id="full-name" className="input" autoComplete="name" required minLength={2} maxLength={100} value={name} onChange={e=>setName(e.target.value)} placeholder="As it appears on your PAN" data-testid="input-name"/></div>}
         <div className="field"><label htmlFor="email">Email address</label><input id="email" className="input" type="email" autoComplete="email" required maxLength={254} value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com" data-testid="input-email"/></div>
         <div className="field"><label htmlFor="password">Password</label><PasswordInput id="password" autoComplete={signup?'new-password':'current-password'} required minLength={signup?12:1} maxLength={128} value={password} onChange={e=>setPassword(e.target.value)} placeholder={signup?'At least 12 characters':'Your password'} data-testid="input-password"/>{signup&&<small className="helper">Use at least 12 characters for a stronger account.</small>}</div>
+        {signup&&<div className="field"><label htmlFor="confirm-password">Confirm password</label><PasswordInput id="confirm-password" autoComplete="new-password" required minLength={12} maxLength={128} value={confirmPassword} onChange={e=>setConfirmPassword(e.target.value)} placeholder="Re-enter your password" data-testid="input-confirm-password" aria-invalid={passwordMismatch||undefined}/>{passwordMismatch?<small className="helper" style={{color:'#b42318'}} data-testid="status-password-mismatch">Passwords do not match.</small>:<small className="helper">Both passwords must match to continue.</small>}</div>}
         {error&&<div className="notice error" role="alert" data-testid="status-auth-error">{getError(error)}</div>}
-        <button type="submit" disabled={mutation.isPending} className="primary-btn" style={{width:'100%',padding:13}} data-testid={signup?'button-signup':'button-login'}>{mutation.isPending?<><LoaderCircle size={15} className="spin"/> Working…</>:signup?'Create account':'Sign in'}{!mutation.isPending&&<ArrowRight size={15}/>}</button>
+        <button type="submit" disabled={mutation.isPending||(signup&&!passwordsMatch)} className="primary-btn" style={{width:'100%',padding:13}} data-testid={signup?'button-signup':'button-login'}>{mutation.isPending?<><LoaderCircle size={15} className="spin"/> Working…</>:signup?'Create account':'Sign in'}{!mutation.isPending&&<ArrowRight size={15}/>}</button>
       </form>
       <div className="auth-switch">{signup?'Already have an account?':'New to CreditSea?'}<Link href={signup?'/login':'/signup'}>{signup?'Sign in':'Create an account'}</Link></div>
       <div style={{display:'flex',alignItems:'center',gap:8,marginTop:28,color:'#879087',fontSize:10}}><ShieldCheck size={14} color="#367466"/> Your details are encrypted and kept private</div>
@@ -174,23 +178,47 @@ function LoansTable({items,onSelect,actions}:{items:Loan[];onSelect:(l:Loan)=>vo
   if(!items.length) return <Empty title="Nothing in this queue" copy="New records will appear here as they move through the CreditSea process." />;
   return <div className="table-wrap"><table><thead><tr><th>Borrower</th><th>Loan reference</th><th>Amount</th><th>Tenure</th><th>Status</th><th> </th></tr></thead><tbody>{items.map(l=><tr key={l.id} data-testid={`row-loan-${l.id}`}><td><div style={{fontWeight:700}}>{l.borrowerName}</div><div className="helper">{l.borrowerEmail}</div></td><td className="mono">{l.reference}</td><td className="currency">{fmtINR(l.principalPaise)}</td><td>{l.tenureDays} days</td><td><Status value={l.status}/></td><td>{actions?actions(l):<button className="text-btn" onClick={()=>onSelect(l)} data-testid={`button-view-loan-${l.id}`}>Details <ChevronRight size={14}/></button>}</td></tr>)}</tbody></table></div>;
 }
-function LeadTable({items,onSelect}:{items:{id:string;name:string;email:string;registeredAt:string;status:string}[];onSelect:(lead:{id:string;name:string;email:string;registeredAt:string;status:string})=>void}) {
+function LeadTable({items,onSelect}:{items:Lead[];onSelect:(lead:Lead)=>void}) {
   if(!items.length)return <Empty title="No unapplied leads" copy="Registered borrowers without a loan application will appear here." />;
-  return <div className="table-wrap"><table><thead><tr><th>Borrower</th><th>Registered</th><th>Status</th><th></th></tr></thead><tbody>{items.map(x=><tr key={x.id} data-testid={`row-lead-${x.id}`}><td><div style={{fontWeight:700}}>{x.name}</div><div className="helper">{x.email}</div></td><td>{fmtDate(x.registeredAt)}</td><td><Status value={x.status}/></td><td><button className="text-btn" onClick={()=>onSelect(x)} data-testid={`button-view-lead-${x.id}`}>View <ChevronRight size={14}/></button></td></tr>)}</tbody></table></div>;
+  return <div className="table-wrap"><table><thead><tr><th>Borrower</th><th>Registered</th><th>Contact</th><th>Status</th><th></th></tr></thead><tbody>{items.map(x=><tr key={x.id} data-testid={`row-lead-${x.id}`}><td><div style={{fontWeight:700}}>{x.name}</div><div className="helper">{x.email}</div></td><td>{fmtDate(x.registeredAt)}</td><td>{x.contactedAt?<div><div style={{fontWeight:600}}>Contacted</div><div className="helper">{fmtDate(x.contactedAt)}{x.contactedBy?` · ${x.contactedBy}`:''}</div></div>:<span className="helper">Not contacted</span>}</td><td><Status value={x.status}/></td><td><button className="text-btn" onClick={()=>onSelect(x)} data-testid={`button-view-lead-${x.id}`}>View <ChevronRight size={14}/></button></td></tr>)}</tbody></table></div>;
+}
+function LoanTimeline({loan}:{loan:Loan}) {
+  const rejected=loan.status==='REJECTED';
+  const sanctioned=['SANCTIONED','DISBURSED','CLOSED'].includes(loan.status);
+  const disbursed=['DISBURSED','CLOSED'].includes(loan.status);
+  const hasPayments=loan.totalPaidPaise>0;
+  const closed=loan.status==='CLOSED';
+  const stages=rejected
+    ? [
+        {label:'Applied',done:true,meta:fmtDate(loan.createdAt)},
+        {label:'Rejected',done:true,meta:loan.rejectionReason?`Reason on file · ${fmtDate(loan.updatedAt)}`:fmtDate(loan.updatedAt)},
+      ]
+    : [
+        {label:'Applied',done:true,meta:fmtDate(loan.createdAt)},
+        {label:'Sanctioned',done:sanctioned,meta:sanctioned?`${fmtDate(loan.sanctionedAt)}${loan.sanctionedBy?` · ${loan.sanctionedBy}`:''}`:'Awaiting review'},
+        {label:'Disbursed',done:disbursed,meta:disbursed?`${fmtDate(loan.disbursedAt)}${loan.disbursedBy?` · ${loan.disbursedBy}`:''}`:'Pending release'},
+        {label:'Payments',done:hasPayments,meta:hasPayments?`${fmtINR(loan.totalPaidPaise)} paid`:'No receipts yet'},
+        {label:'Closed',done:closed,meta:closed?fmtDate(loan.updatedAt):'Outstanding balance'},
+      ];
+  return <div className="timeline" data-testid="loan-timeline" aria-label="Loan timeline">{stages.map(stage=><div key={stage.label} className={`timeline-item${stage.done?' done':''}`}><div>{stage.label}</div><div className="timeline-meta">{stage.meta}</div></div>)}</div>;
 }
 function LoansDialog({loan,onClose}:{loan:Loan;onClose:()=>void}) {
   const {data,error,isLoading,refetch}=useGetBorrowerLoan(loan.id,{query:{queryKey:[`/api/borrower/loans/${loan.id}`]}});
+  const payments=useListBorrowerLoanPayments(loan.id,{query:{queryKey:getListBorrowerLoanPaymentsQueryKey(loan.id)}});
   const download=useDownloadBorrowerSalarySlip(loan.id,{query:{enabled:false,queryKey:[`/api/borrower/loans/${loan.id}/salary-slip`]}});
   const queryClient=useQueryClient();
   const current=data||loan;
+  const showPayments=['DISBURSED','CLOSED'].includes(current.status);
   const onDownload=async()=>{const result=await download.refetch();if(result.data){const url=URL.createObjectURL(result.data);const a=document.createElement('a');a.href=url;a.download=`salary-slip-${loan.reference}`;a.click();URL.revokeObjectURL(url);}};
   return <Dialog title={loan.reference} onClose={onClose}><div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}><div><div className="section-caption">Application status</div><div style={{marginTop:8}}><Status value={current.status}/></div></div><div style={{textAlign:'right'}}><div className="section-caption">Loan amount</div><div className="section-title" style={{marginTop:6}}>{fmtINR(current.principalPaise)}</div></div></div>
     {isLoading?<LoadingRows count={2}/>:error?<div className="notice error" role="alert">{getError(error)} <button className="text-btn" onClick={()=>refetch()}>Retry</button></div>:null}
+    <LoanTimeline loan={current}/>
     <div className="separator"/>
-    <div className="grid" style={{gridTemplateColumns:'1fr 1fr',gap:14}}><div><div className="helper">Interest rate</div><strong>{current.interestRatePercent}%</strong></div><div><div className="helper">Tenure</div><strong>{current.tenureDays} days</strong></div><div><div className="helper">Total repayment</div><strong>{fmtINR(current.totalRepaymentPaise)}</strong></div><div><div className="helper">Outstanding</div><strong>{fmtINR(current.outstandingBalancePaise)}</strong></div></div>
+    <div className="grid" style={{gridTemplateColumns:'1fr 1fr',gap:14}}><div><div className="helper">Interest rate</div><strong>{current.interestRatePercent}%</strong></div><div><div className="helper">Tenure</div><strong>{current.tenureDays} days</strong></div><div><div className="helper">Total repayment</div><strong>{fmtINR(current.totalRepaymentPaise)}</strong></div><div><div className="helper">Paid to date</div><strong>{fmtINR(current.totalPaidPaise)}</strong></div><div><div className="helper">Outstanding</div><strong style={{color:'#1d655b'}}>{fmtINR(current.outstandingBalancePaise)}</strong></div></div>
     {current.rejectionReason&&<div className="notice error" style={{marginTop:18}}>Reason: {current.rejectionReason}</div>}
+    {showPayments&&<div style={{marginTop:18}} data-testid="borrower-payments"><h3 className="section-title">Payment history</h3><p className="section-caption">Receipts recorded against this loan.</p>{payments.isLoading?<LoadingRows count={2}/>:payments.error?<QueryError error={payments.error} retry={()=>payments.refetch()}/>:!payments.data?.items.length?<p className="section-caption" style={{marginTop:8}}>No payments have been recorded yet.</p>:<div style={{maxHeight:160,overflow:'auto',marginTop:8}}>{payments.data.items.map(p=><div key={p.id} className="list-row" data-testid={`borrower-payment-${p.id}`}><div><div className="list-primary">{fmtDate(p.paymentDate)} · {p.utr}</div><div className="list-secondary">Recorded by {p.recordedBy}</div></div><strong>{fmtINR(p.amountPaise)}</strong></div>)}</div>}</div>}
     {current.status==='DISBURSED'&&<div style={{marginTop:20}}><button className="secondary-btn" onClick={onDownload} disabled={download.isFetching||!current.salarySlipAvailable} data-testid="button-download-slip"><Download size={14}/>{download.isFetching?'Preparing…':'Download salary slip'}</button>{download.error&&<div className="notice error" style={{marginTop:8}}>{getError(download.error)}</div>}</div>}
-    <div className="form-actions"><button className="secondary-btn" onClick={()=>{queryClient.invalidateQueries({queryKey:[`/api/borrower/loans/${loan.id}`]});onClose();}}>Done</button></div>
+    <div className="form-actions"><button className="secondary-btn" onClick={()=>{queryClient.invalidateQueries({queryKey:[`/api/borrower/loans/${loan.id}`]});queryClient.invalidateQueries({queryKey:getListBorrowerLoanPaymentsQueryKey(loan.id)});onClose();}}>Done</button></div>
   </Dialog>;
 }
 function Dialog({title,onClose,children}:{title:string;onClose:()=>void;children:ReactNode}) {
@@ -200,10 +228,10 @@ function Dialog({title,onClose,children}:{title:string;onClose:()=>void;children
 
 function BorrowerApplication() {
   const qc=useQueryClient(), profileQuery=useGetBorrowerProfile();
-  const update=useUpdateBorrowerProfile(), eligibility=useCheckBorrowerEligibility(), upload=useUploadSalarySlip(), apply=useApplyForLoan();
+  const update=useUpdateBorrowerProfile(), eligibility=useCheckBorrowerEligibility(), apply=useApplyForLoan();
   const [name,setName]=useState(''),[pan,setPan]=useState(''),[dob,setDob]=useState(''),[salary,setSalary]=useState(''),[employment,setEmployment]=useState('SALARIED');
   const [eligibilityResult,setEligibilityResult]=useState<{eligible:boolean;errors:{field:string;message:string}[]}|null>(null);
-  const [amount,setAmount]=useState(150000),[tenure,setTenure]=useState(180),[file,setFile]=useState<File|null>(null),[submitted,setSubmitted]=useState<Loan|null>(null);
+  const [amount,setAmount]=useState(150000),[tenure,setTenure]=useState(180),[submitted,setSubmitted]=useState<Loan|null>(null);
   const profile=profileQuery.data;
   useEffect(()=>{if(profile){setName(profile.name);setDob(profile.dateOfBirth||'');setSalary(profile.monthlySalaryRupees?.toString()||'');setEmployment(profile.employmentMode||'SALARIED');}},[profile]);
   const payload=():BorrowerProfileInput=>({name:name.trim(),pan:pan.trim().toUpperCase(),dateOfBirth:dob,monthlySalaryRupees:Number(salary),employmentMode:employment as BorrowerProfileInput['employmentMode']});
@@ -211,13 +239,12 @@ function BorrowerApplication() {
   const setResult=(res:{eligible:boolean;errors:{field:string;message:string}[]})=>setEligibilityResult(res);
   const evaluate=(save:boolean)=>{const body=payload();const op=save?update:eligibility;op.mutate({data:body},{onSuccess:res=>{setResult({eligible:res.eligible,errors:res.errors});qc.invalidateQueries({queryKey:getGetBorrowerProfileQueryKey()});if(save)window.scrollTo({top:0,behavior:'smooth'});}});};
   const interest=Math.round(amount*0.12*tenure/365), repayment=amount+interest;
-  const onUpload=()=>{if(!file)return;upload.mutate({data:{file}},{onSuccess:()=>{qc.invalidateQueries({queryKey:getGetBorrowerProfileQueryKey()});setFile(null);}});};
   const submitApplication=()=>apply.mutate({data:{loanAmountRupees:amount,tenureDays:tenure,idempotencyKey:`creditsea-${Date.now()}-${Math.random().toString(36).slice(2,12)}`}},{onSuccess:loan=>{setSubmitted(loan);qc.invalidateQueries({queryKey:getListBorrowerLoansQueryKey()});qc.invalidateQueries({queryKey:getGetBorrowerProfileQueryKey()});}});
   if(profileQuery.isLoading)return <><PageHeading eyebrow="Your application" title="Let’s find your fit." subtitle="A few details help us understand what works for you."/><div className="card"><LoadingRows count={6}/></div></>;
   if(profileQuery.error)return <><PageHeading eyebrow="Your application" title="Let’s find your fit." subtitle="We couldn't retrieve your profile just now."/><QueryError error={profileQuery.error} retry={()=>profileQuery.refetch()}/></>;
   if(submitted)return <div className="card card-pad fade-in" style={{maxWidth:650,margin:'24px auto',textAlign:'center'}}><div className="empty-icon" style={{width:58,height:58}}><CheckCircle2 size={25}/></div><div className="eyebrow">Application received</div><h1 style={{fontSize:30}}>You’re in good hands.</h1><p className="page-subtitle" style={{maxWidth:400,margin:'0 auto 20px'}}>Your application <strong>{submitted.reference}</strong> is now in review. We’ll keep you updated as it moves forward.</p><div className="loan-hero" style={{textAlign:'left',margin:'22px 0'}}><div className="eyebrow">Requested amount</div><div className="loan-hero-value">{fmtINR(submitted.principalPaise)}</div><div className="loan-hero-sub">{submitted.tenureDays} day repayment period · 12% annual interest</div></div><Link className="primary-btn" href="/borrower/loans" data-testid="link-view-applications">View my applications <ArrowRight size={15}/></Link></div>;
   const currentEligibility=eligibilityResult?.eligible ?? profile?.eligibilityStatus==='ELIGIBLE';
-  const mutationError=update.error||eligibility.error||upload.error||apply.error;
+  const mutationError=update.error||eligibility.error||apply.error;
   return <><PageHeading eyebrow="Borrower portal" title="A loan that fits your life." subtitle="Share a few details and we’ll show you what’s possible."/>
     <div className="step-row"><div className="step active"><span className="step-dot">1</span> Your details</div><div className="step-line"/><div className={`step ${currentEligibility?'active':''}`}><span className="step-dot">{currentEligibility?<Check size={12}/>:2}</span> Eligibility</div><div className="step-line"/><div className={`step ${profile?.salarySlip?'active':''}`}><span className="step-dot">{profile?.salarySlip?<Check size={12}/>:3}</span> Your offer</div></div>
     {profile?.eligibilityStatus==='ELIGIBLE'&&<div className="notice success" style={{marginBottom:18}}><CheckCircle2 size={14} style={{verticalAlign:'middle',marginRight:6}}/>Profile checked. Your details are eligible for an application.</div>}
@@ -235,10 +262,7 @@ function BorrowerApplication() {
         <div className="form-actions"><button className="secondary-btn" onClick={()=>evaluate(false)} disabled={!fieldsValid||eligibility.isPending} data-testid="button-check-eligibility">{eligibility.isPending?'Checking…':'Check eligibility'}</button><button className="primary-btn" onClick={()=>evaluate(true)} disabled={!fieldsValid||update.isPending} data-testid="button-save-profile">{update.isPending?'Saving…':'Save details'} <ArrowRight size={14}/></button></div>
       </section>
       <div className="grid" style={{alignContent:'start'}}>
-        <section className="card card-pad"><div style={{display:'flex',justifyContent:'space-between',gap:10}}><div><h2 className="section-title">Income proof</h2><p className="section-caption">A recent salary slip helps us verify your income.</p></div><FileText size={19} color="#478072"/></div>
-          <label className="upload-drop" htmlFor="salary-slip" style={{display:'block',marginTop:18}}><Upload size={18} color="#3b786b" style={{margin:'0 auto'}}/><p>{file?file.name:profile?.salarySlip?.fileName||'Choose your salary slip'}</p><small>{file?`${(file.size/1024/1024).toFixed(2)} MB · ready to upload`:profile?.salarySlip?`Uploaded ${fmtDate(profile.salarySlip.uploadedAt)} · private to your account`:'PDF, JPG or PNG · maximum 5 MB'}</small><input id="salary-slip" type="file" accept="application/pdf,image/jpeg,image/png" className="sr-only" onChange={e=>setFile(e.target.files?.[0]||null)} data-testid="input-salary-slip"/></label>
-          {(file||!profile?.salarySlip)&&<button className="secondary-btn" style={{width:'100%',marginTop:12}} onClick={onUpload} disabled={!file||upload.isPending} data-testid="button-upload-slip"><Upload size={14}/>{upload.isPending?'Uploading securely…':'Upload privately'}</button>}
-        </section>
+        <SalarySlipUpload existing={profile?.salarySlip} />
         <section className={`loan-hero ${!currentEligibility?'':'fade-in'}`}><div className="eyebrow">Repayment preview</div><div className="loan-hero-value">{fmtRupees(repayment)}</div><div className="loan-hero-sub">Indicative total · subject to final review</div><div className="separator" style={{background:'rgba(238,246,241,.18)',margin:'17px 0'}}/><div style={{display:'flex',justifyContent:'space-between',fontSize:11}}><span>Principal</span><strong>{fmtRupees(amount)}</strong></div><div style={{display:'flex',justifyContent:'space-between',fontSize:11,marginTop:8}}><span>Interest · 12% p.a.</span><strong>{fmtRupees(interest)}</strong></div></section>
       </div>
     </div>
@@ -283,13 +307,20 @@ function OperationsOverview({role}:{role:User['role']}) {
 }
 
 function LeadsPage() {
- const [search,setSearch]=useState(''),[page,setPage]=useState(1),[selected,setSelected]=useState<{id:string;name:string;email:string;registeredAt:string;status:string}|null>(null);
+ const qc=useQueryClient(),[search,setSearch]=useState(''),[page,setPage]=useState(1),[selected,setSelected]=useState<Lead|null>(null),[note,setNote]=useState('');
  const params=useMemo(()=>({page,pageSize:10,search:search.trim()||undefined}),[page,search]);
- const q=useListSalesLeads(params);
+ const q=useListSalesLeads(params),addNote=useAddSalesLeadNote();
+ const closeLead=()=>{setSelected(null);setNote('');};
+ const saveNote=()=>{if(!selected||!note.trim())return;addNote.mutate({id:selected.id,data:{note:note.trim()}},{onSuccess:(lead)=>{setSelected(lead);setNote('');qc.invalidateQueries({queryKey:getListSalesLeadsQueryKey(params)});}});};
  return <><PageHeading eyebrow="Sales workspace" title="A conversation can start here." subtitle="Registered borrowers who haven’t started a loan application yet."/>
   <section className="card"><div className="card-head"><div><h2 className="section-title">Unapplied leads</h2><p className="section-caption">{q.data?.total??0} registered borrowers</p></div><div className="filter-row"><div className="search-wrap"><Search className="search-icon"/><input className="input" type="search" placeholder="Search name or email" value={search} onChange={e=>{setSearch(e.target.value);setPage(1);}} aria-label="Search leads" data-testid="input-search-leads"/></div></div></div>
-  {q.isLoading?<LoadingRows/>:q.error?<QueryError error={q.error} retry={()=>q.refetch()}/>:<><LeadTable items={q.data?.items||[]} onSelect={setSelected}/><Pagination page={page} pageSize={q.data?.pageSize||10} total={q.data?.total||0} onChange={setPage}/></>}</section>
-  {selected&&<Dialog title={selected.name} onClose={()=>setSelected(null)}><div className="section-caption">Registered borrower</div><div className="list-row"><span>Email</span><strong>{selected.email}</strong></div><div className="list-row"><span>Registered</span><strong>{fmtDate(selected.registeredAt)}</strong></div><div className="list-row"><span>Current status</span><Status value={selected.status}/></div><div className="notice info" style={{marginTop:16}}>This borrower has not applied for a loan. Reach out through your approved channels.</div></Dialog>}
+  {q.isLoading?<LoadingRows/>:q.error?<QueryError error={q.error} retry={()=>q.refetch()}/>:<><LeadTable items={q.data?.items||[]} onSelect={(lead)=>{setSelected(lead);setNote('');}}/><Pagination page={page} pageSize={q.data?.pageSize||10} total={q.data?.total||0} onChange={setPage}/></>}</section>
+  {selected&&<Dialog title={selected.name} onClose={closeLead}><div className="section-caption">Registered borrower</div><div className="list-row"><span>Email</span><strong>{selected.email}</strong></div><div className="list-row"><span>Registered</span><strong>{fmtDate(selected.registeredAt)}</strong></div><div className="list-row"><span>Current status</span><Status value={selected.status}/></div><div className="list-row"><span>Contacted</span><strong>{selected.contactedAt?`${fmtDate(selected.contactedAt)}${selected.contactedBy?` · ${selected.contactedBy}`:''}`:'Not yet'}</strong></div>
+  <div className="separator"/><h3 className="section-title">Follow-up notes</h3>
+  {selected.notes.length?<div style={{maxHeight:140,overflow:'auto',marginTop:8}} data-testid="lead-notes">{selected.notes.map((entry,index)=><div key={`${entry.recordedAt}-${index}`} className="list-row"><div><div className="list-primary">{entry.note}</div><div className="list-secondary">{fmtDate(entry.recordedAt)} · {entry.recordedBy}</div></div></div>)}</div>:<p className="section-caption" style={{marginTop:8}}>No notes yet. Record the first outreach below.</p>}
+  <div className="field" style={{marginTop:16}}><label htmlFor="sales-note">Add note</label><textarea id="sales-note" className="textarea" rows={3} minLength={1} maxLength={1000} value={note} onChange={e=>setNote(e.target.value)} placeholder="What did you discuss? When will you follow up?" data-testid="input-sales-note"/></div>
+  {addNote.error&&<div className="notice error" style={{marginTop:12}} role="alert">{getError(addNote.error)}</div>}
+  <div className="form-actions"><button className="secondary-btn" onClick={closeLead}>Close</button><button className="primary-btn" onClick={saveNote} disabled={addNote.isPending||!note.trim()} data-testid="button-save-sales-note">{addNote.isPending?'Saving…':'Save note & mark contacted'}</button></div></Dialog>}
  </>;
 }
 function Pagination({page,pageSize,total,onChange}:{page:number;pageSize:number;total:number;onChange:(n:number)=>void}) { const pages=Math.max(1,Math.ceil(total/pageSize));return <div className="pagination"><span>Showing {total?((page-1)*pageSize+1):0}–{Math.min(page*pageSize,total)} of {total}</span><div className="pagination-controls"><button onClick={()=>onChange(page-1)} disabled={page<=1} aria-label="Previous page">Previous</button><button onClick={()=>onChange(page+1)} disabled={page>=pages} aria-label="Next page">Next</button></div></div>; }
