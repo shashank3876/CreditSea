@@ -1,10 +1,16 @@
 import path from "node:path";
 
 export const MAX_SALARY_SLIP_BYTES = 5 * 1024 * 1024;
+export const ALLOWED_SALARY_SLIP_MIME_TYPES = [
+  "application/pdf",
+  "image/jpeg",
+  "image/png",
+] as const;
 export type SalarySlipContentType =
-  | "application/pdf"
-  | "image/jpeg"
-  | "image/png";
+  (typeof ALLOWED_SALARY_SLIP_MIME_TYPES)[number];
+
+const DANGEROUS_NAME_PATTERN =
+  /(\.(exe|bat|cmd|com|msi|scr|js|jar|php|sh|ps1|dll|html|htm|svg))$/i;
 
 export function expectedSalarySlipContentType(
   fileName: string,
@@ -26,15 +32,28 @@ export function validateSalarySlipFile(file: {
     throw new RangeError("The file must be between 1 byte and 5 MB.");
   }
 
-  const expectedType = expectedSalarySlipContentType(file.originalName);
+  const baseName = path.basename(file.originalName.replace(/\\/g, "/"));
+  if (!baseName || baseName === "." || baseName === "..") {
+    throw new RangeError("Provide a valid salary-slip file name.");
+  }
+  if (DANGEROUS_NAME_PATTERN.test(baseName) || baseName.includes("\0")) {
+    throw new RangeError("This file type is not allowed for salary slips.");
+  }
+
+  const expectedType = expectedSalarySlipContentType(baseName);
   const detectedType = detectSalarySlipContentType(file.contents);
-  if (!expectedType || expectedType !== file.contentType || detectedType !== expectedType) {
+  const declaredType = file.contentType.toLowerCase().split(";", 1)[0]?.trim();
+  if (
+    !expectedType ||
+    !declaredType ||
+    declaredType !== expectedType ||
+    detectedType !== expectedType
+  ) {
     throw new RangeError(
       "The file contents do not match a supported PDF, JPG, or PNG file.",
     );
   }
 
-  const baseName = path.basename(file.originalName.replace(/\\/g, "/"));
   const safeName =
     baseName.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-120) || "salary-slip";
   return { contentType: expectedType, fileName: safeName };

@@ -6,7 +6,7 @@ import {
   useGetCurrentUser, useGetDashboardStats, useListBorrowerLoans, useListCollectionLoans,
   useListDisbursementLoans, useListEmployees, useListLoanPayments, useListSalesLeads,
   useListSanctionLoans, useLogIn, useLogOut, useRecordLoanPayment,
-  useRejectLoan, useSignUp, useUpdateBorrowerProfile, useUpdateEmployeeStatus, useUploadSalarySlip,
+  useRejectLoan, useSignUp, useUpdateBorrowerProfile, useUpdateEmployeeStatus,
   getGetBorrowerProfileQueryKey, getGetCurrentUserQueryKey, getGetDashboardStatsQueryKey,
   getDownloadSanctionSalarySlipQueryKey,
   getListBorrowerLoansQueryKey, getListCollectionLoansQueryKey, getListDisbursementLoansQueryKey,
@@ -16,12 +16,13 @@ import type { BorrowerProfileInput, EmployeeCreateInput, EmployeeRole, Loan, Pay
 import { useQueryClient } from '@tanstack/react-query';
 import {
   Activity, ArrowRight, BadgeCheck, Banknote, Check, CheckCircle2, ChevronRight, ClipboardList,
-  Eye, EyeOff, FileCheck2, FileText, HandCoins, Home, LogOut, Search, ShieldCheck, Upload, UserPlus, Users, Wallet, X,
+  Eye, EyeOff, FileCheck2, HandCoins, Home, LogOut, Search, ShieldCheck, UserPlus, Users, Wallet, X,
   AlertCircle, LoaderCircle, Download, Phone,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { type FormEvent, type InputHTMLAttributes, type ReactNode, useEffect, useId, useMemo, useState } from 'react';
+import { SalarySlipUpload } from '@/components/salary-slip-upload';
 
 type Page = 'home'|'login'|'signup'|'borrower'|'borrower-loans'|'operations'|'sales'|'sanction'|'disbursement'|'collection'|'employees';
 const PAGE_ROLES: Record<Exclude<Page, 'home'|'login'|'signup'>, readonly UserRole[]> = {
@@ -117,9 +118,11 @@ function AppShell({page, user, children}:{page:Page;user?:User;children:ReactNod
 function AuthPage({signup}:{signup:boolean}) {
   const router=useRouter(), queryClient=useQueryClient();
   const signUp=useSignUp(), logIn=useLogIn();
-  const [name,setName]=useState(''),[email,setEmail]=useState(''),[password,setPassword]=useState('');
+  const [name,setName]=useState(''),[email,setEmail]=useState(''),[password,setPassword]=useState(''),[confirmPassword,setConfirmPassword]=useState('');
   const mutation=signup?signUp:logIn, error=mutation.error;
-  const submit=(e:FormEvent)=>{e.preventDefault(); if(signup) signUp.mutate({data:{name,email,password}},{onSuccess:(response)=>{queryClient.setQueryData(getGetCurrentUserQueryKey(),response.user);router.push('/borrower');}}); else logIn.mutate({data:{email,password}},{onSuccess:(response)=>{queryClient.setQueryData(getGetCurrentUserQueryKey(),response.user);router.push(response.user.role==='BORROWER'?'/borrower':'/operations');}});};
+  const passwordsMatch=!signup||(password.length>0&&password===confirmPassword);
+  const passwordMismatch=signup&&confirmPassword.length>0&&password!==confirmPassword;
+  const submit=(e:FormEvent)=>{e.preventDefault(); if(signup&&!passwordsMatch)return; if(signup) signUp.mutate({data:{name,email,password}},{onSuccess:(response)=>{queryClient.setQueryData(getGetCurrentUserQueryKey(),response.user);router.push('/borrower');}}); else logIn.mutate({data:{email,password}},{onSuccess:(response)=>{queryClient.setQueryData(getGetCurrentUserQueryKey(),response.user);router.push(response.user.role==='BORROWER'?'/borrower':'/operations');}});};
   return <div className="auth-page">
     <aside className="auth-aside"><Link className="brand-row" href="/"><span className="brand-mark">C</span><span><span className="brand-name">creditsea</span><span className="brand-sub">Finance, made clear</span></span></Link><div className="aside-copy"><div className="eyebrow">A more human way to borrow</div><h2>Money moves.<br/>Make your next<br/>move with clarity.</h2><p>Thoughtful credit, transparent terms, and a team that’s with you at every step.</p></div><div className="aside-foot">Secure by design · Built for India</div></aside>
     <main className="auth-main"><div className="auth-box"><div className="eyebrow">{signup?'Get started':'Welcome back'}</div><h1>{signup?'A little about you.':'Good to see you again.'}</h1><p>{signup?'Create your secure CreditSea account. It takes less than a minute.':'Sign in to pick up where you left off.'}</p>
@@ -127,8 +130,9 @@ function AuthPage({signup}:{signup:boolean}) {
         {signup&&<div className="field"><label htmlFor="full-name">Full name</label><input id="full-name" className="input" autoComplete="name" required minLength={2} maxLength={100} value={name} onChange={e=>setName(e.target.value)} placeholder="As it appears on your PAN" data-testid="input-name"/></div>}
         <div className="field"><label htmlFor="email">Email address</label><input id="email" className="input" type="email" autoComplete="email" required maxLength={254} value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com" data-testid="input-email"/></div>
         <div className="field"><label htmlFor="password">Password</label><PasswordInput id="password" autoComplete={signup?'new-password':'current-password'} required minLength={signup?12:1} maxLength={128} value={password} onChange={e=>setPassword(e.target.value)} placeholder={signup?'At least 12 characters':'Your password'} data-testid="input-password"/>{signup&&<small className="helper">Use at least 12 characters for a stronger account.</small>}</div>
+        {signup&&<div className="field"><label htmlFor="confirm-password">Confirm password</label><PasswordInput id="confirm-password" autoComplete="new-password" required minLength={12} maxLength={128} value={confirmPassword} onChange={e=>setConfirmPassword(e.target.value)} placeholder="Re-enter your password" data-testid="input-confirm-password" aria-invalid={passwordMismatch||undefined}/>{passwordMismatch?<small className="helper" style={{color:'#b42318'}} data-testid="status-password-mismatch">Passwords do not match.</small>:<small className="helper">Both passwords must match to continue.</small>}</div>}
         {error&&<div className="notice error" role="alert" data-testid="status-auth-error">{getError(error)}</div>}
-        <button type="submit" disabled={mutation.isPending} className="primary-btn" style={{width:'100%',padding:13}} data-testid={signup?'button-signup':'button-login'}>{mutation.isPending?<><LoaderCircle size={15} className="spin"/> Working…</>:signup?'Create account':'Sign in'}{!mutation.isPending&&<ArrowRight size={15}/>}</button>
+        <button type="submit" disabled={mutation.isPending||(signup&&!passwordsMatch)} className="primary-btn" style={{width:'100%',padding:13}} data-testid={signup?'button-signup':'button-login'}>{mutation.isPending?<><LoaderCircle size={15} className="spin"/> Working…</>:signup?'Create account':'Sign in'}{!mutation.isPending&&<ArrowRight size={15}/>}</button>
       </form>
       <div className="auth-switch">{signup?'Already have an account?':'New to CreditSea?'}<Link href={signup?'/login':'/signup'}>{signup?'Sign in':'Create an account'}</Link></div>
       <div style={{display:'flex',alignItems:'center',gap:8,marginTop:28,color:'#879087',fontSize:10}}><ShieldCheck size={14} color="#367466"/> Your details are encrypted and kept private</div>
@@ -200,10 +204,10 @@ function Dialog({title,onClose,children}:{title:string;onClose:()=>void;children
 
 function BorrowerApplication() {
   const qc=useQueryClient(), profileQuery=useGetBorrowerProfile();
-  const update=useUpdateBorrowerProfile(), eligibility=useCheckBorrowerEligibility(), upload=useUploadSalarySlip(), apply=useApplyForLoan();
+  const update=useUpdateBorrowerProfile(), eligibility=useCheckBorrowerEligibility(), apply=useApplyForLoan();
   const [name,setName]=useState(''),[pan,setPan]=useState(''),[dob,setDob]=useState(''),[salary,setSalary]=useState(''),[employment,setEmployment]=useState('SALARIED');
   const [eligibilityResult,setEligibilityResult]=useState<{eligible:boolean;errors:{field:string;message:string}[]}|null>(null);
-  const [amount,setAmount]=useState(150000),[tenure,setTenure]=useState(180),[file,setFile]=useState<File|null>(null),[submitted,setSubmitted]=useState<Loan|null>(null);
+  const [amount,setAmount]=useState(150000),[tenure,setTenure]=useState(180),[submitted,setSubmitted]=useState<Loan|null>(null);
   const profile=profileQuery.data;
   useEffect(()=>{if(profile){setName(profile.name);setDob(profile.dateOfBirth||'');setSalary(profile.monthlySalaryRupees?.toString()||'');setEmployment(profile.employmentMode||'SALARIED');}},[profile]);
   const payload=():BorrowerProfileInput=>({name:name.trim(),pan:pan.trim().toUpperCase(),dateOfBirth:dob,monthlySalaryRupees:Number(salary),employmentMode:employment as BorrowerProfileInput['employmentMode']});
@@ -211,13 +215,12 @@ function BorrowerApplication() {
   const setResult=(res:{eligible:boolean;errors:{field:string;message:string}[]})=>setEligibilityResult(res);
   const evaluate=(save:boolean)=>{const body=payload();const op=save?update:eligibility;op.mutate({data:body},{onSuccess:res=>{setResult({eligible:res.eligible,errors:res.errors});qc.invalidateQueries({queryKey:getGetBorrowerProfileQueryKey()});if(save)window.scrollTo({top:0,behavior:'smooth'});}});};
   const interest=Math.round(amount*0.12*tenure/365), repayment=amount+interest;
-  const onUpload=()=>{if(!file)return;upload.mutate({data:{file}},{onSuccess:()=>{qc.invalidateQueries({queryKey:getGetBorrowerProfileQueryKey()});setFile(null);}});};
   const submitApplication=()=>apply.mutate({data:{loanAmountRupees:amount,tenureDays:tenure,idempotencyKey:`creditsea-${Date.now()}-${Math.random().toString(36).slice(2,12)}`}},{onSuccess:loan=>{setSubmitted(loan);qc.invalidateQueries({queryKey:getListBorrowerLoansQueryKey()});qc.invalidateQueries({queryKey:getGetBorrowerProfileQueryKey()});}});
   if(profileQuery.isLoading)return <><PageHeading eyebrow="Your application" title="Let’s find your fit." subtitle="A few details help us understand what works for you."/><div className="card"><LoadingRows count={6}/></div></>;
   if(profileQuery.error)return <><PageHeading eyebrow="Your application" title="Let’s find your fit." subtitle="We couldn't retrieve your profile just now."/><QueryError error={profileQuery.error} retry={()=>profileQuery.refetch()}/></>;
   if(submitted)return <div className="card card-pad fade-in" style={{maxWidth:650,margin:'24px auto',textAlign:'center'}}><div className="empty-icon" style={{width:58,height:58}}><CheckCircle2 size={25}/></div><div className="eyebrow">Application received</div><h1 style={{fontSize:30}}>You’re in good hands.</h1><p className="page-subtitle" style={{maxWidth:400,margin:'0 auto 20px'}}>Your application <strong>{submitted.reference}</strong> is now in review. We’ll keep you updated as it moves forward.</p><div className="loan-hero" style={{textAlign:'left',margin:'22px 0'}}><div className="eyebrow">Requested amount</div><div className="loan-hero-value">{fmtINR(submitted.principalPaise)}</div><div className="loan-hero-sub">{submitted.tenureDays} day repayment period · 12% annual interest</div></div><Link className="primary-btn" href="/borrower/loans" data-testid="link-view-applications">View my applications <ArrowRight size={15}/></Link></div>;
   const currentEligibility=eligibilityResult?.eligible ?? profile?.eligibilityStatus==='ELIGIBLE';
-  const mutationError=update.error||eligibility.error||upload.error||apply.error;
+  const mutationError=update.error||eligibility.error||apply.error;
   return <><PageHeading eyebrow="Borrower portal" title="A loan that fits your life." subtitle="Share a few details and we’ll show you what’s possible."/>
     <div className="step-row"><div className="step active"><span className="step-dot">1</span> Your details</div><div className="step-line"/><div className={`step ${currentEligibility?'active':''}`}><span className="step-dot">{currentEligibility?<Check size={12}/>:2}</span> Eligibility</div><div className="step-line"/><div className={`step ${profile?.salarySlip?'active':''}`}><span className="step-dot">{profile?.salarySlip?<Check size={12}/>:3}</span> Your offer</div></div>
     {profile?.eligibilityStatus==='ELIGIBLE'&&<div className="notice success" style={{marginBottom:18}}><CheckCircle2 size={14} style={{verticalAlign:'middle',marginRight:6}}/>Profile checked. Your details are eligible for an application.</div>}
@@ -235,10 +238,7 @@ function BorrowerApplication() {
         <div className="form-actions"><button className="secondary-btn" onClick={()=>evaluate(false)} disabled={!fieldsValid||eligibility.isPending} data-testid="button-check-eligibility">{eligibility.isPending?'Checking…':'Check eligibility'}</button><button className="primary-btn" onClick={()=>evaluate(true)} disabled={!fieldsValid||update.isPending} data-testid="button-save-profile">{update.isPending?'Saving…':'Save details'} <ArrowRight size={14}/></button></div>
       </section>
       <div className="grid" style={{alignContent:'start'}}>
-        <section className="card card-pad"><div style={{display:'flex',justifyContent:'space-between',gap:10}}><div><h2 className="section-title">Income proof</h2><p className="section-caption">A recent salary slip helps us verify your income.</p></div><FileText size={19} color="#478072"/></div>
-          <label className="upload-drop" htmlFor="salary-slip" style={{display:'block',marginTop:18}}><Upload size={18} color="#3b786b" style={{margin:'0 auto'}}/><p>{file?file.name:profile?.salarySlip?.fileName||'Choose your salary slip'}</p><small>{file?`${(file.size/1024/1024).toFixed(2)} MB · ready to upload`:profile?.salarySlip?`Uploaded ${fmtDate(profile.salarySlip.uploadedAt)} · private to your account`:'PDF, JPG or PNG · maximum 5 MB'}</small><input id="salary-slip" type="file" accept="application/pdf,image/jpeg,image/png" className="sr-only" onChange={e=>setFile(e.target.files?.[0]||null)} data-testid="input-salary-slip"/></label>
-          {(file||!profile?.salarySlip)&&<button className="secondary-btn" style={{width:'100%',marginTop:12}} onClick={onUpload} disabled={!file||upload.isPending} data-testid="button-upload-slip"><Upload size={14}/>{upload.isPending?'Uploading securely…':'Upload privately'}</button>}
-        </section>
+        <SalarySlipUpload existing={profile?.salarySlip} />
         <section className={`loan-hero ${!currentEligibility?'':'fade-in'}`}><div className="eyebrow">Repayment preview</div><div className="loan-hero-value">{fmtRupees(repayment)}</div><div className="loan-hero-sub">Indicative total · subject to final review</div><div className="separator" style={{background:'rgba(238,246,241,.18)',margin:'17px 0'}}/><div style={{display:'flex',justifyContent:'space-between',fontSize:11}}><span>Principal</span><strong>{fmtRupees(amount)}</strong></div><div style={{display:'flex',justifyContent:'space-between',fontSize:11,marginTop:8}}><span>Interest · 12% p.a.</span><strong>{fmtRupees(interest)}</strong></div></section>
       </div>
     </div>
