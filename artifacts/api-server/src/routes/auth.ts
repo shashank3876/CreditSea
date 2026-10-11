@@ -54,6 +54,7 @@ router.post("/auth/signup", signupLimiter, async (req, res) => {
     email,
     passwordHash,
     role: "BORROWER",
+    status: "ACTIVE",
     eligibilityStatus: "NOT_CHECKED",
     eligibilityErrors: [],
   });
@@ -71,6 +72,9 @@ router.post("/auth/login", authLimiter, async (req, res) => {
   if (!user || !(await bcrypt.compare(input.password, user.passwordHash))) {
     throw new HttpError(401, "Email or password is incorrect.", "UNAUTHORIZED");
   }
+  if (user.status === "DISABLED") {
+    throw new HttpError(401, "This account has been disabled.", "UNAUTHORIZED");
+  }
 
   setSessionCookie(res, user._id.toString());
   res.json(LogInResponse.parse({ user: userDto(user) }));
@@ -85,13 +89,12 @@ router.get("/auth/me", requireAuth, (req, res) => {
   const user = req.currentUser!;
   res.json(
     GetCurrentUserResponse.parse({
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        createdAt: user.createdAt,
-      },
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      status: user.status,
+      createdAt: user.createdAt,
     }),
   );
 });

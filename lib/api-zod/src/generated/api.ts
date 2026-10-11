@@ -41,6 +41,7 @@ export const SignUpResponse = zod.object({
   "name": zod.string(),
   "email": zod.string().email(),
   "role": zod.enum(['ADMIN', 'SALES', 'SANCTION', 'DISBURSEMENT', 'COLLECTION', 'BORROWER']),
+  "status": zod.enum(['ACTIVE', 'DISABLED']),
   "createdAt": zod.coerce.date()
 })
 })
@@ -66,6 +67,7 @@ export const LogInResponse = zod.object({
   "name": zod.string(),
   "email": zod.string().email(),
   "role": zod.enum(['ADMIN', 'SALES', 'SANCTION', 'DISBURSEMENT', 'COLLECTION', 'BORROWER']),
+  "status": zod.enum(['ACTIVE', 'DISABLED']),
   "createdAt": zod.coerce.date()
 })
 })
@@ -87,6 +89,7 @@ export const GetCurrentUserResponse = zod.object({
   "name": zod.string(),
   "email": zod.string().email(),
   "role": zod.enum(['ADMIN', 'SALES', 'SANCTION', 'DISBURSEMENT', 'COLLECTION', 'BORROWER']),
+  "status": zod.enum(['ACTIVE', 'DISABLED']),
   "createdAt": zod.coerce.date()
 })
 
@@ -955,6 +958,93 @@ export const GetDashboardStatsResponse = zod.object({
   "disbursed": zod.number().int(),
   "closed": zod.number().int(),
   "totalOutstandingPaise": zod.number().int()
+})
+
+
+/**
+ * @summary List internal employee accounts
+ */
+export const listEmployeesQueryPageDefault = 1;
+
+export const listEmployeesQueryPageSizeDefault = 20;
+export const listEmployeesQueryPageSizeMax = 100;
+
+export const listEmployeesQuerySearchMax = 100;
+
+
+
+export const ListEmployeesQueryParams = zod.object({
+  "page": zod.coerce.number().int().min(1).default(listEmployeesQueryPageDefault),
+  "pageSize": zod.coerce.number().int().min(1).max(listEmployeesQueryPageSizeMax).default(listEmployeesQueryPageSizeDefault),
+  "search": zod.coerce.string().max(listEmployeesQuerySearchMax).optional()
+})
+
+export const ListEmployeesResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "email": zod.string().email(),
+  "role": zod.enum(['ADMIN', 'SALES', 'SANCTION', 'DISBURSEMENT', 'COLLECTION']),
+  "status": zod.enum(['ACTIVE', 'DISABLED']),
+  "createdAt": zod.coerce.date()
+})),
+  "page": zod.number().int(),
+  "pageSize": zod.number().int(),
+  "total": zod.number().int()
+})
+
+
+/**
+ * @summary Create an internal employee account
+ */
+export const createEmployeeBodyNameMin = 2;
+export const createEmployeeBodyNameMax = 100;
+
+export const createEmployeeBodyEmailMax = 254;
+
+export const createEmployeeBodyPasswordMin = 12;
+export const createEmployeeBodyPasswordMax = 128;
+
+
+
+export const CreateEmployeeBody = zod.object({
+  "name": zod.string().min(createEmployeeBodyNameMin).max(createEmployeeBodyNameMax),
+  "email": zod.string().email().max(createEmployeeBodyEmailMax),
+  "password": zod.string().min(createEmployeeBodyPasswordMin).max(createEmployeeBodyPasswordMax),
+  "role": zod.enum(['SALES', 'SANCTION', 'DISBURSEMENT', 'COLLECTION'])
+})
+
+export const CreateEmployeeResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "email": zod.string().email(),
+  "role": zod.enum(['ADMIN', 'SALES', 'SANCTION', 'DISBURSEMENT', 'COLLECTION']),
+  "status": zod.enum(['ACTIVE', 'DISABLED']),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Activate or disable an employee account
+ */
+export const updateEmployeeStatusPathIdRegExp = new RegExp('^[a-fA-F0-9]{24}$');
+
+
+export const UpdateEmployeeStatusParams = zod.object({
+  "id": zod.coerce.string().regex(updateEmployeeStatusPathIdRegExp)
+})
+
+export const UpdateEmployeeStatusBody = zod.object({
+  "status": zod.enum(['ACTIVE', 'DISABLED'])
+})
+
+export const UpdateEmployeeStatusResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "email": zod.string().email(),
+  "role": zod.enum(['ADMIN', 'SALES', 'SANCTION', 'DISBURSEMENT', 'COLLECTION']),
+  "status": zod.enum(['ACTIVE', 'DISABLED']),
+  "createdAt": zod.coerce.date()
 })
 
 

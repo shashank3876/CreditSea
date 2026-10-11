@@ -21,6 +21,24 @@ export const UserRole = {
   BORROWER: 'BORROWER',
 } as const;
 
+export type EmployeeRole = typeof EmployeeRole[keyof typeof EmployeeRole];
+
+
+export const EmployeeRole = {
+  SALES: 'SALES',
+  SANCTION: 'SANCTION',
+  DISBURSEMENT: 'DISBURSEMENT',
+  COLLECTION: 'COLLECTION',
+} as const;
+
+export type AccountStatus = typeof AccountStatus[keyof typeof AccountStatus];
+
+
+export const AccountStatus = {
+  ACTIVE: 'ACTIVE',
+  DISABLED: 'DISABLED',
+} as const;
+
 export type EmploymentMode = typeof EmploymentMode[keyof typeof EmploymentMode];
 
 
@@ -46,7 +64,55 @@ export interface User {
   name: string;
   email: string;
   role: UserRole;
+  status: AccountStatus;
   createdAt: string;
+}
+
+export type EmployeeRoleProperty = typeof EmployeeRoleProperty[keyof typeof EmployeeRoleProperty];
+
+
+export const EmployeeRoleProperty = {
+  ADMIN: 'ADMIN',
+  SALES: 'SALES',
+  SANCTION: 'SANCTION',
+  DISBURSEMENT: 'DISBURSEMENT',
+  COLLECTION: 'COLLECTION',
+} as const;
+
+export interface Employee {
+  id: string;
+  name: string;
+  email: string;
+  role: EmployeeRoleProperty;
+  status: AccountStatus;
+  createdAt: string;
+}
+
+export interface EmployeeCreateInput {
+  /**
+     * @minLength 2
+     * @maxLength 100
+     */
+  name: string;
+  /** @maxLength 254 */
+  email: string;
+  /**
+     * @minLength 12
+     * @maxLength 128
+     */
+  password: string;
+  role: EmployeeRole;
+}
+
+export interface EmployeeStatusInput {
+  status: AccountStatus;
+}
+
+export interface EmployeeListResponse {
+  items: Employee[];
+  page: number;
+  pageSize: number;
+  total: number;
 }
 
 export interface SignupInput {
@@ -390,6 +456,22 @@ search?: SearchParameter;
 };
 
 export type ListCollectionLoansParams = {
+/**
+ * @minimum 1
+ */
+page?: PageParameter;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+pageSize?: PageSizeParameter;
+/**
+ * @maxLength 100
+ */
+search?: SearchParameter;
+};
+
+export type ListEmployeesParams = {
 /**
  * @minimum 1
  */

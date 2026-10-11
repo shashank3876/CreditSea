@@ -8,7 +8,7 @@ Required:
 
 - `MONGODB_URI` — a reachable MongoDB replica set, such as an active Atlas cluster. The application uses transactions for posting payments.
 - `SESSION_SECRET` — a unique, randomly generated value of at least 32 characters.
-- `PRIVATE_OBJECT_DIR` and the Replit-managed App Storage configuration for private salary-slip files.
+- Private salary-slip storage — either AWS S3 (`AWS_REGION` + `AWS_S3_BUCKET`) or Replit/local (`PRIVATE_OBJECT_DIR`). MongoDB stores a durable `objectKey`, not a temporary signed URL.
 
 Optional:
 

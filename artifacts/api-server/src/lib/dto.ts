@@ -10,6 +10,25 @@ export function userDto(
     name: user.name,
     email: user.email,
     role: user.role,
+    status: user.status ?? "ACTIVE",
+    createdAt: user.createdAt,
+  };
+}
+
+export function employeeDto(
+  user: HydratedDocument<IUser> | (IUser & { _id: { toString(): string } }),
+) {
+  return {
+    id: user._id.toString(),
+    name: user.name,
+    email: user.email,
+    role: user.role as
+      | "ADMIN"
+      | "SALES"
+      | "SANCTION"
+      | "DISBURSEMENT"
+      | "COLLECTION",
+    status: user.status ?? "ACTIVE",
     createdAt: user.createdAt,
   };
 }

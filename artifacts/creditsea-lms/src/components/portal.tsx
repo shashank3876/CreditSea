@@ -1,29 +1,40 @@
 'use client';
 
 import {
-  useApproveLoan, useApplyForLoan, useCheckBorrowerEligibility, useDisburseLoan,
+  useApproveLoan, useApplyForLoan, useCheckBorrowerEligibility, useCreateEmployee, useDisburseLoan,
   useDownloadBorrowerSalarySlip, useDownloadSanctionSalarySlip, useGetBorrowerLoan, useGetBorrowerProfile,
   useGetCurrentUser, useGetDashboardStats, useListBorrowerLoans, useListCollectionLoans,
-  useListDisbursementLoans, useListLoanPayments, useListSalesLeads,
+  useListDisbursementLoans, useListEmployees, useListLoanPayments, useListSalesLeads,
   useListSanctionLoans, useLogIn, useLogOut, useRecordLoanPayment,
-  useRejectLoan, useSignUp, useUpdateBorrowerProfile, useUploadSalarySlip,
+  useRejectLoan, useSignUp, useUpdateBorrowerProfile, useUpdateEmployeeStatus, useUploadSalarySlip,
   getGetBorrowerProfileQueryKey, getGetCurrentUserQueryKey, getGetDashboardStatsQueryKey,
   getDownloadSanctionSalarySlipQueryKey,
   getListBorrowerLoansQueryKey, getListCollectionLoansQueryKey, getListDisbursementLoansQueryKey,
-  getListLoanPaymentsQueryKey, getListSalesLeadsQueryKey, getListSanctionLoansQueryKey,
+  getListEmployeesQueryKey, getListLoanPaymentsQueryKey, getListSalesLeadsQueryKey, getListSanctionLoansQueryKey,
 } from '@workspace/api-client-react';
-import type { BorrowerProfileInput, Loan, PaymentInput, User } from '@workspace/api-client-react';
+import type { BorrowerProfileInput, EmployeeCreateInput, EmployeeRole, Loan, PaymentInput, User, UserRole } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   Activity, ArrowRight, BadgeCheck, Banknote, Check, CheckCircle2, ChevronRight, ClipboardList,
-  FileCheck2, FileText, HandCoins, Home, LogOut, Search, ShieldCheck, Upload, Users, Wallet, X,
+  Eye, EyeOff, FileCheck2, FileText, HandCoins, Home, LogOut, Search, ShieldCheck, Upload, UserPlus, Users, Wallet, X,
   AlertCircle, LoaderCircle, Download, Phone,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { type FormEvent, type ReactNode, useEffect, useMemo, useState } from 'react';
+import { type FormEvent, type InputHTMLAttributes, type ReactNode, useEffect, useId, useMemo, useState } from 'react';
 
-type Page = 'home'|'login'|'signup'|'borrower'|'borrower-loans'|'operations'|'sales'|'sanction'|'disbursement'|'collection';
+type Page = 'home'|'login'|'signup'|'borrower'|'borrower-loans'|'operations'|'sales'|'sanction'|'disbursement'|'collection'|'employees';
+const PAGE_ROLES: Record<Exclude<Page, 'home'|'login'|'signup'>, readonly UserRole[]> = {
+  borrower: ['BORROWER'],
+  'borrower-loans': ['BORROWER'],
+  operations: ['ADMIN', 'SALES', 'SANCTION', 'DISBURSEMENT', 'COLLECTION'],
+  sales: ['ADMIN', 'SALES'],
+  sanction: ['ADMIN', 'SANCTION'],
+  disbursement: ['ADMIN', 'DISBURSEMENT'],
+  collection: ['ADMIN', 'COLLECTION'],
+  employees: ['ADMIN'],
+};
+const EMPLOYEE_ROLE_OPTIONS: EmployeeRole[] = ['SALES', 'SANCTION', 'DISBURSEMENT', 'COLLECTION'];
 const fmtINR = (paise: number) => new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR',maximumFractionDigits:0}).format(Math.round(paise/100));
 const fmtRupees = (amount: number) => new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR',maximumFractionDigits:0}).format(amount);
 const fmtDate = (date?: string|null) => date ? new Intl.DateTimeFormat('en-IN',{day:'2-digit',month:'short',year:'numeric'}).format(new Date(date)) : '—';
@@ -37,6 +48,27 @@ const initials = (name?: string) => name?.split(' ').map(s=>s[0]).slice(0,2).joi
 function Status({value}:{value:string}) { return <span className={`badge ${value.toLowerCase()}`} data-testid={`status-${value.toLowerCase()}`}>{titleCase(value)}</span>; }
 function LoadingRows({count=4}:{count?:number}) { return <div aria-label="Loading records" className="card-pad">{Array.from({length:count},(_,i)=><div key={i} className="skeleton" style={{height:38,marginBottom:12}} />)}</div>; }
 function QueryError({error,retry}:{error:unknown;retry:()=>void}) { return <div className="empty-state"><div className="empty-icon"><AlertCircle size={20}/></div><div className="empty-title">We couldn’t load this yet</div><p className="empty-copy">{getError(error)}</p><button className="text-btn" onClick={retry} data-testid="button-retry">Try again</button></div>; }
+type PasswordInputProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'type'> & { 'data-testid'?: string };
+function PasswordInput({ id, className, 'data-testid': testId, ...props }: PasswordInputProps) {
+  const [visible, setVisible] = useState(false);
+  const autoId = useId();
+  const inputId = id ?? autoId;
+  return (
+    <div className="password-wrap">
+      <input id={inputId} className={className ?? 'input'} type={visible ? 'text' : 'password'} data-testid={testId} {...props} />
+      <button
+        type="button"
+        className="password-toggle"
+        onClick={() => setVisible(v => !v)}
+        aria-label={visible ? 'Hide password' : 'Show password'}
+        aria-pressed={visible}
+        data-testid={testId ? `${testId}-toggle` : 'button-toggle-password'}
+      >
+        {visible ? <EyeOff size={16} /> : <Eye size={16} />}
+      </button>
+    </div>
+  );
+}
 function Empty({title,copy}:{title:string;copy:string}) { return <div className="empty-state"><div className="empty-icon"><FileCheck2 size={20}/></div><div className="empty-title">{title}</div><p className="empty-copy">{copy}</p></div>; }
 
 const borrowerNav = [
@@ -49,6 +81,7 @@ const opsNav = [
   {href:'/operations/sanction',label:'Sanction queue',icon:BadgeCheck},
   {href:'/operations/disbursement',label:'Disbursement',icon:Banknote},
   {href:'/operations/collection',label:'Collections',icon:Wallet},
+  {href:'/operations/employees',label:'Employees',icon:UserPlus},
 ];
 function AppShell({page, user, children}:{page:Page;user?:User;children:ReactNode}) {
   const router = useRouter();
@@ -56,10 +89,14 @@ function AppShell({page, user, children}:{page:Page;user?:User;children:ReactNod
   const queryClient = useQueryClient();
   const operations = !!user && user.role !== 'BORROWER';
   const operationPath = user?.role === 'SALES' ? '/operations/sales' : user?.role === 'SANCTION' ? '/operations/sanction' : user?.role === 'DISBURSEMENT' ? '/operations/disbursement' : user?.role === 'COLLECTION' ? '/operations/collection' : null;
-  const nav = operations ? user?.role === 'ADMIN' ? opsNav : opsNav.filter(item=>item.href==='/operations'||item.href===operationPath) : borrowerNav;
+  const nav = operations
+    ? user?.role === 'ADMIN'
+      ? opsNav
+      : opsNav.filter(item => item.href === '/operations' || item.href === operationPath)
+    : borrowerNav;
   const section = operations ? 'Operations workspace' : 'Borrower workspace';
   const onLogout = () => logout.mutate(undefined,{onSuccess:()=>{queryClient.clear();router.push('/login');}});
-  const active = (href:string) => href === '/operations' ? page === 'operations' : page === 'sales' ? href === '/operations/sales' : page === 'sanction' ? href === '/operations/sanction' : page === 'disbursement' ? href === '/operations/disbursement' : page === 'collection' ? href === '/operations/collection' : page === 'borrower-loans' ? href === '/borrower/loans' : page === 'borrower' && href === '/borrower';
+  const active = (href:string) => href === '/operations' ? page === 'operations' : page === 'sales' ? href === '/operations/sales' : page === 'sanction' ? href === '/operations/sanction' : page === 'disbursement' ? href === '/operations/disbursement' : page === 'collection' ? href === '/operations/collection' : page === 'employees' ? href === '/operations/employees' : page === 'borrower-loans' ? href === '/borrower/loans' : page === 'borrower' && href === '/borrower';
   return <div className="app-layout">
     <aside className="side-rail">
       <Link className="brand-row" href="/"><span className="brand-mark">C</span><span><span className="brand-name">creditsea</span><span className="brand-sub">Finance, made clear</span></span></Link>
@@ -89,7 +126,7 @@ function AuthPage({signup}:{signup:boolean}) {
       <form className="auth-form" onSubmit={submit}>
         {signup&&<div className="field"><label htmlFor="full-name">Full name</label><input id="full-name" className="input" autoComplete="name" required minLength={2} maxLength={100} value={name} onChange={e=>setName(e.target.value)} placeholder="As it appears on your PAN" data-testid="input-name"/></div>}
         <div className="field"><label htmlFor="email">Email address</label><input id="email" className="input" type="email" autoComplete="email" required maxLength={254} value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com" data-testid="input-email"/></div>
-        <div className="field"><label htmlFor="password">Password</label><input id="password" className="input" type="password" autoComplete={signup?'new-password':'current-password'} required minLength={signup?12:1} maxLength={128} value={password} onChange={e=>setPassword(e.target.value)} placeholder={signup?'At least 12 characters':'Your password'} data-testid="input-password"/>{signup&&<small className="helper">Use at least 12 characters for a stronger account.</small>}</div>
+        <div className="field"><label htmlFor="password">Password</label><PasswordInput id="password" autoComplete={signup?'new-password':'current-password'} required minLength={signup?12:1} maxLength={128} value={password} onChange={e=>setPassword(e.target.value)} placeholder={signup?'At least 12 characters':'Your password'} data-testid="input-password"/>{signup&&<small className="helper">Use at least 12 characters for a stronger account.</small>}</div>
         {error&&<div className="notice error" role="alert" data-testid="status-auth-error">{getError(error)}</div>}
         <button type="submit" disabled={mutation.isPending} className="primary-btn" style={{width:'100%',padding:13}} data-testid={signup?'button-signup':'button-login'}>{mutation.isPending?<><LoaderCircle size={15} className="spin"/> Working…</>:signup?'Create account':'Sign in'}{!mutation.isPending&&<ArrowRight size={15}/>}</button>
       </form>
@@ -315,6 +352,76 @@ function CollectionPage() {
  </>;
 }
 
+function EmployeesPage() {
+  const qc = useQueryClient();
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [role, setRole] = useState<EmployeeRole>('SALES');
+  const params = useMemo(() => ({ page, pageSize: 10, search: search.trim() || undefined }), [page, search]);
+  const list = useListEmployees(params);
+  const create = useCreateEmployee();
+  const updateStatus = useUpdateEmployeeStatus();
+  const resetForm = () => { setName(''); setEmail(''); setPassword(''); setRole('SALES'); };
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    const body: EmployeeCreateInput = { name: name.trim(), email: email.trim(), password, role };
+    create.mutate({ data: body }, {
+      onSuccess: () => {
+        qc.invalidateQueries({ queryKey: getListEmployeesQueryKey() });
+        resetForm();
+        setOpen(false);
+      },
+    });
+  };
+  const toggleStatus = (id: string, status: 'ACTIVE' | 'DISABLED') => {
+    updateStatus.mutate(
+      { id, data: { status: status === 'ACTIVE' ? 'DISABLED' : 'ACTIVE' } },
+      { onSuccess: () => qc.invalidateQueries({ queryKey: getListEmployeesQueryKey() }) },
+    );
+  };
+  return <>
+    <PageHeading eyebrow="Admin controls" title="Manage internal employees." subtitle="Create Sales, Sanction, Disbursement, and Collection accounts. Borrowers still register through public signup." />
+    <section className="card">
+      <div className="card-head">
+        <div>
+          <h2 className="section-title">Employee directory</h2>
+          <p className="section-caption">{list.data?.total ?? 0} internal accounts</p>
+        </div>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <div className="search-wrap"><Search className="search-icon" /><input className="input" type="search" aria-label="Search employees" placeholder="Search by name or email" value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} data-testid="input-search-employees" /></div>
+          <button className="primary-btn" onClick={() => setOpen(true)} data-testid="button-open-create-employee"><UserPlus size={14} /> Add employee</button>
+        </div>
+      </div>
+      {list.isLoading ? <LoadingRows /> : list.error ? <QueryError error={list.error} retry={() => list.refetch()} /> : list.data?.items.length ? <>
+        <div className="table-wrap"><table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th></th></tr></thead>
+          <tbody>{list.data.items.map(employee => <tr key={employee.id} data-testid={`row-employee-${employee.id}`}>
+            <td style={{ fontWeight: 700 }}>{employee.name}</td>
+            <td>{employee.email}</td>
+            <td><Status value={employee.role} /></td>
+            <td><Status value={employee.status} /></td>
+            <td>{employee.role === 'ADMIN' ? <span className="helper">Protected</span> : <button className="text-btn" disabled={updateStatus.isPending} onClick={() => toggleStatus(employee.id, employee.status)} data-testid={`button-toggle-employee-${employee.id}`}>{employee.status === 'ACTIVE' ? 'Disable' : 'Activate'}</button>}</td>
+          </tr>)}</tbody>
+        </table></div>
+        <Pagination page={page} pageSize={list.data.pageSize || 10} total={list.data.total} onChange={setPage} />
+      </> : <Empty title="No employees yet" copy="Create the first Sales, Sanction, Disbursement, or Collection account." />}
+    </section>
+    {open && <Dialog title="Create employee" onClose={() => { setOpen(false); resetForm(); }}>
+      <form onSubmit={submit} className="grid" style={{ gap: 12 }}>
+        <div className="field"><label htmlFor="employee-name">Full name</label><input id="employee-name" className="input" required minLength={2} maxLength={100} value={name} onChange={e => setName(e.target.value)} data-testid="input-employee-name" /></div>
+        <div className="field"><label htmlFor="employee-email">Work email</label><input id="employee-email" className="input" type="email" required maxLength={254} value={email} onChange={e => setEmail(e.target.value)} data-testid="input-employee-email" /></div>
+        <div className="field"><label htmlFor="employee-role">Role</label><select id="employee-role" className="input" value={role} onChange={e => setRole(e.target.value as EmployeeRole)} data-testid="select-employee-role">{EMPLOYEE_ROLE_OPTIONS.map(option => <option key={option} value={option}>{titleCase(option)}</option>)}</select></div>
+        <div className="field"><label htmlFor="employee-password">Temporary password</label><PasswordInput id="employee-password" required minLength={12} maxLength={128} value={password} onChange={e => setPassword(e.target.value)} data-testid="input-employee-password" /><small className="helper">At least 12 characters. Share it securely with the employee.</small></div>
+        {create.error && <div className="notice error" role="alert">{getError(create.error)}</div>}
+        <div className="form-actions"><button type="button" className="secondary-btn" onClick={() => { setOpen(false); resetForm(); }}>Cancel</button><button type="submit" className="primary-btn" disabled={create.isPending} data-testid="button-create-employee">{create.isPending ? 'Creating…' : 'Create employee'} <ArrowRight size={14} /></button></div>
+      </form>
+    </Dialog>}
+  </>;
+}
+
 export default function Portal({page}:{page:Page}) {
  const userQuery=useGetCurrentUser({query:{queryKey:getGetCurrentUserQueryKey(),retry:false}});
  if(page==='home')return <Entry user={userQuery.data}/>;
@@ -324,8 +431,7 @@ export default function Portal({page}:{page:Page}) {
  if(userQuery.error)return <div className="auth-page"><aside className="auth-aside"><Link className="brand-row" href="/"><span className="brand-mark">C</span><span className="brand-name">creditsea</span></Link><div className="aside-copy"><h2>One account.<br/>A clearer view.</h2><p>Sign in securely to continue to your CreditSea workspace.</p></div></aside><main className="auth-main"><div className="auth-box"><div className="eyebrow">Secure sign in</div><h1>Your session has ended.</h1><p>Sign in to access your account and continue where you left off.</p><Link className="primary-btn" href="/login" data-testid="link-sign-in">Sign in <ArrowRight size={15}/></Link></div></main></div>;
  const user=userQuery.data;
  if(!user)return <div style={{minHeight:'100dvh',display:'grid',placeItems:'center'}}><div className="skeleton" style={{width:220,height:18}}/></div>;
- const operationsPage=['operations','sales','sanction','disbursement','collection'].includes(page);
- const allowed=operationsPage?user.role!=='BORROWER':user.role==='BORROWER';
+ const allowed = PAGE_ROLES[page]?.includes(user.role) ?? false;
  if(!allowed)return <AppShell page={page} user={user}><div className="card card-pad" style={{maxWidth:600,margin:'45px auto'}}><div className="empty-icon"><ShieldCheck size={20}/></div><h1 style={{fontSize:25}}>This workspace is for a different role.</h1><p className="page-subtitle">You’re signed in as {titleCase(user.role)}. Choose your workspace to continue.</p><div style={{display:'flex',gap:10,marginTop:20}}><Link className="primary-btn" href={user.role==='BORROWER'?'/borrower':'/operations'}>Go to my workspace <ArrowRight size={14}/></Link></div></div></AppShell>;
  let content:React.ReactNode;
  switch(page){
@@ -336,6 +442,7 @@ export default function Portal({page}:{page:Page}) {
   case 'sanction':content=<SanctionPage/>;break;
   case 'disbursement':content=<DisbursementPage/>;break;
   case 'collection':content=<CollectionPage/>;break;
+  case 'employees':content=<EmployeesPage/>;break;
   default:content=null;
  }
  return <AppShell page={page} user={user}>{content}</AppShell>;

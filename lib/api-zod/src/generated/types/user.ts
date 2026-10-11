@@ -5,6 +5,7 @@
  * CreditSea loan origination and servicing API
  * OpenAPI spec version: 0.2.0
  */
+import type { AccountStatus } from './accountStatus';
 import type { UserRole } from './userRole';
 
 export interface User {
@@ -12,5 +13,6 @@ export interface User {
   name: string;
   email: string;
   role: UserRole;
+  status: AccountStatus;
   createdAt: Date;
 }

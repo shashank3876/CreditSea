@@ -49,6 +49,7 @@ async function main(): Promise<void> {
     await User.create({
       ...account,
       passwordHash,
+      status: "ACTIVE",
       eligibilityStatus: "NOT_CHECKED",
       eligibilityErrors: [],
     });

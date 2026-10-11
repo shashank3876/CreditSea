@@ -12,6 +12,7 @@ tags:
   - name: auth
   - name: borrower
   - name: operations
+  - name: employees
 paths:
   /healthz:
     get:
@@ -540,9 +541,90 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
 
+  /operations/employees:
+    get:
+      operationId: listEmployees
+      tags: [employees]
+      summary: List internal employee accounts
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+        - $ref: "#/components/parameters/Search"
+      responses:
+        "200":
+          description: Employee accounts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmployeeListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      operationId: createEmployee
+      tags: [employees]
+      summary: Create an internal employee account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmployeeCreateInput"
+      responses:
+        "201":
+          description: Employee created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Employee"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /operations/employees/{id}/status:
+    patch:
+      operationId: updateEmployeeStatus
+      tags: [employees]
+      summary: Activate or disable an employee account
+      parameters:
+        - $ref: "#/components/parameters/EmployeeId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmployeeStatusInput"
+      responses:
+        "200":
+          description: Updated employee
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Employee"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
 components:
   parameters:
     LoanId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: "^[a-fA-F0-9]{24}$"
+    EmployeeId:
       name: id
       in: path
       required: true
@@ -614,6 +696,12 @@ components:
     UserRole:
       type: string
       enum: [ADMIN, SALES, SANCTION, DISBURSEMENT, COLLECTION, BORROWER]
+    EmployeeRole:
+      type: string
+      enum: [SALES, SANCTION, DISBURSEMENT, COLLECTION]
+    AccountStatus:
+      type: string
+      enum: [ACTIVE, DISABLED]
     EmploymentMode:
       type: string
       enum: [SALARIED, SELF_EMPLOYED, UNEMPLOYED]
@@ -622,13 +710,50 @@ components:
       enum: [APPLIED, SANCTIONED, REJECTED, DISBURSED, CLOSED]
     User:
       type: object
-      required: [id, name, email, role, createdAt]
+      required: [id, name, email, role, status, createdAt]
       properties:
         id: { type: string }
         name: { type: string }
         email: { type: string, format: email }
         role: { $ref: "#/components/schemas/UserRole" }
+        status: { $ref: "#/components/schemas/AccountStatus" }
         createdAt: { type: string, format: date-time }
+    Employee:
+      type: object
+      required: [id, name, email, role, status, createdAt]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        email: { type: string, format: email }
+        role:
+          type: string
+          enum: [ADMIN, SALES, SANCTION, DISBURSEMENT, COLLECTION]
+        status: { $ref: "#/components/schemas/AccountStatus" }
+        createdAt: { type: string, format: date-time }
+    EmployeeCreateInput:
+      type: object
+      required: [name, email, password, role]
+      properties:
+        name: { type: string, minLength: 2, maxLength: 100 }
+        email: { type: string, format: email, maxLength: 254 }
+        password: { type: string, minLength: 12, maxLength: 128 }
+        role: { $ref: "#/components/schemas/EmployeeRole" }
+    EmployeeStatusInput:
+      type: object
+      required: [status]
+      properties:
+        status: { $ref: "#/components/schemas/AccountStatus" }
+    EmployeeListResponse:
+      type: object
+      required: [items, page, pageSize, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Employee"
+        page: { type: integer }
+        pageSize: { type: integer }
+        total: { type: integer }
     SignupInput:
       type: object
       required: [name, email, password]

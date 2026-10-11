@@ -76,7 +76,7 @@ Operations list endpoints accept validated pagination and search query parameter
 - Cookie-authenticated writes require a same-origin request.
 - PAN is encrypted with AES-256-GCM using a key derived from `SESSION_SECRET`.
 - Salary slips are limited to 5 MB and checked against their declared PDF/JPEG/PNG type and file signature.
-- Salary slips are stored in private object storage and streamed only after authorization.
+- Salary slips are stored in private object storage (AWS S3 in production, or Replit/local in development). MongoDB keeps a durable `objectKey`; downloads are streamed only after authorization. Do not store temporary presigned URLs in MongoDB.
 - API input is validated with generated Zod schemas; sign-in and sign-up are rate limited.
 - `.gitignore` and `.replitignore` exclude local environment secrets and private-key files while keeping `.env.example` as a placeholder template.
 
@@ -90,7 +90,7 @@ Required at runtime:
 
 - `MONGODB_URI` — MongoDB connection string. Use a replica set or MongoDB Atlas because payment posting uses a MongoDB transaction.
 - `SESSION_SECRET` — long, random secret used for sessions and PAN encryption.
-- `PRIVATE_OBJECT_DIR` and the Replit-managed object-storage configuration — private salary-slip storage.
+- Private salary-slip storage: `AWS_REGION` + `AWS_S3_BUCKET` for AWS, or `PRIVATE_OBJECT_DIR` for Replit/local.
 
 `WEB_ORIGIN` is optional for deployments where the web app and API use different origins. For the Replit artifact setup, the API is routed at `/api` on the web app's origin.
 

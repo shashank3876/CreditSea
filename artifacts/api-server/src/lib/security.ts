@@ -109,7 +109,7 @@ export async function requireAuth(
     }
 
     const user = await User.findById(claims.sub).select(
-      "_id name email role createdAt",
+      "_id name email role status createdAt",
     );
     if (!user) {
       clearSessionCookie(res);
@@ -118,11 +118,20 @@ export async function requireAuth(
         .json({ error: "Your session has expired.", code: "UNAUTHORIZED" });
       return;
     }
+    if (user.status === "DISABLED") {
+      clearSessionCookie(res);
+      res.status(401).json({
+        error: "This account has been disabled.",
+        code: "UNAUTHORIZED",
+      });
+      return;
+    }
     req.currentUser = {
       id: user._id.toString(),
       name: user.name,
       email: user.email,
       role: user.role,
+      status: user.status ?? "ACTIVE",
       createdAt: user.createdAt,
     };
     next();

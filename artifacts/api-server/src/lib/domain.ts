@@ -166,9 +166,30 @@ export function canTransitionLoan(
   return transitions[current]?.includes(next) ?? false;
 }
 
+export const ASSIGNABLE_EMPLOYEE_ROLES = [
+  "SALES",
+  "SANCTION",
+  "DISBURSEMENT",
+  "COLLECTION",
+] as const;
+
+export type AssignableEmployeeRole = (typeof ASSIGNABLE_EMPLOYEE_ROLES)[number];
+
+export function isAssignableEmployeeRole(
+  role: string,
+): role is AssignableEmployeeRole {
+  return (ASSIGNABLE_EMPLOYEE_ROLES as readonly string[]).includes(role);
+}
+
 export function canAccessRole(
   role: UserRole,
-  area: "sales" | "sanction" | "disbursement" | "collection" | "dashboard",
+  area:
+    | "sales"
+    | "sanction"
+    | "disbursement"
+    | "collection"
+    | "dashboard"
+    | "employees",
 ): boolean {
   const roleAccess: Record<typeof area, readonly UserRole[]> = {
     sales: ["ADMIN", "SALES"],
@@ -176,6 +197,7 @@ export function canAccessRole(
     disbursement: ["ADMIN", "DISBURSEMENT"],
     collection: ["ADMIN", "COLLECTION"],
     dashboard: ["ADMIN", "SALES", "SANCTION", "DISBURSEMENT", "COLLECTION"],
+    employees: ["ADMIN"],
   };
   return roleAccess[area].includes(role);
 }

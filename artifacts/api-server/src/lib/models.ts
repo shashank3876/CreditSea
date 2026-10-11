@@ -10,6 +10,17 @@ export const USER_ROLES = [
 ] as const;
 export type UserRole = (typeof USER_ROLES)[number];
 
+export const EMPLOYEE_ROLES = [
+  "SALES",
+  "SANCTION",
+  "DISBURSEMENT",
+  "COLLECTION",
+] as const;
+export type EmployeeRole = (typeof EMPLOYEE_ROLES)[number];
+
+export const ACCOUNT_STATUSES = ["ACTIVE", "DISABLED"] as const;
+export type AccountStatus = (typeof ACCOUNT_STATUSES)[number];
+
 export const EMPLOYMENT_MODES = [
   "SALARIED",
   "SELF_EMPLOYED",
@@ -27,6 +38,7 @@ export interface IUser {
   email: string;
   passwordHash: string;
   role: UserRole;
+  status: AccountStatus;
   panEncrypted?: string;
   panLast4?: string;
   dateOfBirth?: Date;
@@ -61,6 +73,13 @@ const userSchema = new Schema<IUser>(
     },
     passwordHash: { type: String, required: true, select: false },
     role: { type: String, enum: USER_ROLES, required: true, index: true },
+    status: {
+      type: String,
+      enum: ACCOUNT_STATUSES,
+      default: "ACTIVE",
+      required: true,
+      index: true,
+    },
     panEncrypted: { type: String, select: false },
     panLast4: { type: String, select: false },
     dateOfBirth: { type: Date },
@@ -78,6 +97,7 @@ const userSchema = new Schema<IUser>(
   { timestamps: true, minimize: false },
 );
 userSchema.index({ role: 1, createdAt: -1 });
+userSchema.index({ role: 1, status: 1, createdAt: -1 });
 
 export interface ISalarySlip {
   borrowerId: Types.ObjectId;

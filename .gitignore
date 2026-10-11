@@ -56,3 +56,14 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+# Next.js generated files
+artifacts/creditsea-lms/.next/
+artifacts/creditsea-lms/out/
+
+# Deployment artifacts
+creditsea-eb-api.zip
+
+# Environment secrets
+.env
+.env.*
+!.env.example

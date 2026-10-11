@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.2.0
  */
 
+export * from './accountStatus';
 export * from './authResponse';
 export * from './badRequestResponse';
 export * from './borrowerProfile';
@@ -15,6 +16,12 @@ export * from './conflictResponse';
 export * from './dashboardStats';
 export * from './disbursementInput';
 export * from './eligibilityResult';
+export * from './employee';
+export * from './employeeCreateInput';
+export * from './employeeListResponse';
+export * from './employeeRole';
+export * from './employeeRoleProperty';
+export * from './employeeStatusInput';
 export * from './employmentMode';
 export * from './errorResponse';
 export * from './fieldError';
@@ -24,6 +31,7 @@ export * from './lead';
 export * from './leadListResponse';
 export * from './listCollectionLoansParams';
 export * from './listDisbursementLoansParams';
+export * from './listEmployeesParams';
 export * from './listSalesLeadsParams';
 export * from './listSanctionLoansParams';
 export * from './loan';

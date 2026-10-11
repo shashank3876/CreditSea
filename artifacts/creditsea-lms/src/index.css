@@ -176,6 +176,11 @@ tr:hover td { background:#fcfbf8; }
 .search-wrap { position:relative; flex:1;max-width:320px; }
 .search-wrap .input { padding-left:35px; }
 .search-icon { position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#929a92;width:14px; }
+.password-wrap { position:relative; }
+.password-wrap .input { padding-right:42px; }
+.password-toggle { position:absolute; right:6px; top:50%; transform:translateY(-50%); border:0; background:transparent; border-radius:7px; color:#78827a; padding:7px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; }
+.password-toggle:hover { background:#f2f0ea; color:#35574f; }
+.password-toggle:focus-visible { outline:0; box-shadow:0 0 0 3px rgba(86,140,127,.13); }
 .dialog-backdrop { position:fixed;inset:0;background:rgba(13,35,32,.4);display:grid;place-items:center;padding:20px;z-index:50; }
 .dialog { width:min(510px,100%);max-height:90dvh;overflow:auto;background:#fff;border-radius:16px;padding:24px;box-shadow:0 24px 70px rgba(11,31,27,.2);animation:fade-in .18s ease both; }
 .dialog-head { display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;gap:12px; }

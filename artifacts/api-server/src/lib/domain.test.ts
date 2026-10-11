@@ -5,6 +5,7 @@ import {
   canAccessRole,
   canTransitionLoan,
   checkEligibility,
+  isAssignableEmployeeRole,
   normalizeUtr,
   validatePayment,
   validateUtr,
@@ -169,6 +170,15 @@ test("loan lifecycle only allows the intended forward transitions", () => {
   assert.equal(canTransitionLoan("APPLIED", "DISBURSED"), false);
 });
 
+test("only Sales, Sanction, Disbursement, and Collection roles are assignable to employees", () => {
+  for (const role of ["SALES", "SANCTION", "DISBURSEMENT", "COLLECTION"] as const) {
+    assert.equal(isAssignableEmployeeRole(role), true);
+  }
+  assert.equal(isAssignableEmployeeRole("ADMIN"), false);
+  assert.equal(isAssignableEmployeeRole("BORROWER"), false);
+  assert.equal(isAssignableEmployeeRole("HACKER"), false);
+});
+
 test("each staff role is limited to its own operations area and admins can access all", () => {
   assert.equal(canAccessRole("SALES", "sales"), true);
   assert.equal(canAccessRole("SALES", "sanction"), false);
@@ -176,12 +186,15 @@ test("each staff role is limited to its own operations area and admins can acces
   assert.equal(canAccessRole("SANCTION", "collection"), false);
   assert.equal(canAccessRole("DISBURSEMENT", "disbursement"), true);
   assert.equal(canAccessRole("COLLECTION", "collection"), true);
+  assert.equal(canAccessRole("ADMIN", "employees"), true);
+  assert.equal(canAccessRole("SALES", "employees"), false);
   for (const area of [
     "sales",
     "sanction",
     "disbursement",
     "collection",
     "dashboard",
+    "employees",
   ] as const) {
     assert.equal(canAccessRole("ADMIN", area), true);
     assert.equal(canAccessRole("BORROWER", area), false);

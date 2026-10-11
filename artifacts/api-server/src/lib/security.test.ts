@@ -15,6 +15,7 @@ function roleRequest(role?: "ADMIN" | "SALES" | "SANCTION" | "DISBURSEMENT" | "C
           name: "Test User",
           email: "user@creditsea.test",
           role,
+          status: "ACTIVE" as const,
           createdAt: new Date("2026-01-01T00:00:00.000Z"),
         }
       : undefined,
@@ -79,6 +80,31 @@ test("role middleware rejects requests without an authenticated user", () => {
     () => assert.fail("An unauthenticated request must not continue"),
   );
   assert.equal(recorder.statusCode, 401);
+});
+
+test("employee management middleware allows only Admin", () => {
+  let calledNext = false;
+  const allowed = responseRecorder();
+  requireRole("ADMIN")(roleRequest("ADMIN"), allowed.response, () => {
+    calledNext = true;
+  });
+  assert.equal(calledNext, true);
+
+  for (const role of [
+    "SALES",
+    "SANCTION",
+    "DISBURSEMENT",
+    "COLLECTION",
+    "BORROWER",
+  ] as const) {
+    const recorder = responseRecorder();
+    requireRole("ADMIN")(
+      roleRequest(role),
+      recorder.response,
+      () => assert.fail(`${role} must not manage employees`),
+    );
+    assert.equal(recorder.statusCode, 403);
+  }
 });
 
 function csrfRequest(options: {
