@@ -18,21 +18,41 @@ export function userDto(
 export function leadDto(
   user: HydratedDocument<IUser> | (IUser & { _id: { toString(): string } }),
 ) {
-  const notes = [...(user.salesNotes ?? [])]
-    .sort((a, b) => b.at.getTime() - a.at.getTime())
-    .slice(0, 20)
+  const rawNotes = Array.isArray(user.salesNotes) ? user.salesNotes : [];
+  const notes = rawNotes
+    .filter(
+      (entry): entry is NonNullable<(typeof rawNotes)[number]> =>
+        Boolean(entry?.note && entry?.name && entry?.at),
+    )
     .map((entry) => ({
-      note: entry.note,
-      recordedBy: entry.name,
-      recordedAt: entry.at,
-    }));
+      note: String(entry.note),
+      recordedBy: String(entry.name),
+      recordedAt: entry.at instanceof Date ? entry.at : new Date(entry.at),
+    }))
+    .filter((entry) => !Number.isNaN(entry.recordedAt.getTime()))
+    .sort((a, b) => b.recordedAt.getTime() - a.recordedAt.getTime())
+    .slice(0, 20);
+
+  const contactedAtRaw = user.salesContact?.at;
+  const contactedAt =
+    contactedAtRaw == null
+      ? null
+      : contactedAtRaw instanceof Date
+        ? contactedAtRaw
+        : new Date(contactedAtRaw);
+  const registeredAt =
+    user.createdAt instanceof Date ? user.createdAt : new Date(user.createdAt);
+
   return {
     id: user._id.toString(),
     name: user.name,
     email: user.email,
-    registeredAt: user.createdAt,
+    registeredAt: Number.isNaN(registeredAt.getTime())
+      ? new Date(0)
+      : registeredAt,
     status: "REGISTERED_NOT_APPLIED" as const,
-    contactedAt: user.salesContact?.at ?? null,
+    contactedAt:
+      contactedAt && !Number.isNaN(contactedAt.getTime()) ? contactedAt : null,
     contactedBy: user.salesContact?.name ?? null,
     notes,
   };
