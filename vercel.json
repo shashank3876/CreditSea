@@ -1,4 +1,5 @@
 {
+  "framework": null,
   "installCommand": "pnpm install",
   "buildCommand": "pnpm --filter @workspace/creditsea-lms run build",
   "outputDirectory": "artifacts/creditsea-lms/out",
