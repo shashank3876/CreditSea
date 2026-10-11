@@ -1,0 +1,11 @@
+{
+  "installCommand": "pnpm install",
+  "buildCommand": "pnpm --filter @workspace/creditsea-lms run build",
+  "outputDirectory": "artifacts/creditsea-lms/out",
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "http://13.232.233.127:8080/api/:path*"
+    }
+  ]
+}
