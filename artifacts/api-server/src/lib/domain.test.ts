@@ -6,6 +6,7 @@ import {
   canTransitionLoan,
   checkEligibility,
   isAssignableEmployeeRole,
+  isPaymentBeforeDisbursement,
   normalizeUtr,
   validatePayment,
   validateUtr,
@@ -130,6 +131,23 @@ test("UTR normalization makes case, whitespace, and hyphen variants equivalent",
 test("UTR validation rejects short and punctuated identifiers", () => {
   assert.throws(() => validateUtr("ABC12"), RangeError);
   assert.throws(() => validateUtr("ABC_123"), RangeError);
+});
+
+test("payment-vs-disbursement compares calendar days, not clock time", () => {
+  const disbursedAt = new Date("2026-10-12T06:19:03.166Z");
+  // Date-only form values parse as UTC midnight on that day.
+  assert.equal(
+    isPaymentBeforeDisbursement(new Date("2026-10-12"), disbursedAt),
+    false,
+  );
+  assert.equal(
+    isPaymentBeforeDisbursement(new Date("2026-10-11"), disbursedAt),
+    true,
+  );
+  assert.equal(
+    isPaymentBeforeDisbursement(new Date("2026-10-13T00:00:00.000Z"), disbursedAt),
+    false,
+  );
 });
 
 test("payment validation allows a positive payment up to the outstanding balance", () => {

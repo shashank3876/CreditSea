@@ -31,6 +31,7 @@ import {
 } from "@workspace/api-zod";
 import {
   canAccessRole,
+  isPaymentBeforeDisbursement,
   validatePayment,
   validateUtr,
 } from "../lib/domain";
@@ -479,7 +480,7 @@ router.post(
         }
         if (
           loan.disbursement?.at &&
-          paymentDate.getTime() < loan.disbursement.at.getTime()
+          isPaymentBeforeDisbursement(paymentDate, loan.disbursement.at)
         ) {
           throw new HttpError(
             400,

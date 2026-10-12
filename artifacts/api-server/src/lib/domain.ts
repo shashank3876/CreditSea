@@ -126,6 +126,18 @@ export function validateUtr(utr: string): string {
   return normalized;
 }
 
+export function utcCalendarDay(date: Date): number {
+  return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+}
+
+/** Date-only payment inputs (YYYY-MM-DD) parse as UTC midnight; compare by calendar day. */
+export function isPaymentBeforeDisbursement(
+  paymentDate: Date,
+  disbursedAt: Date,
+): boolean {
+  return utcCalendarDay(paymentDate) < utcCalendarDay(disbursedAt);
+}
+
 export function validatePayment(
   amountPaise: number,
   outstandingBalancePaise: number,
@@ -141,13 +153,7 @@ export function validatePayment(
   if (Number.isNaN(paymentDate.getTime())) {
     throw new RangeError("Payment date must be valid.");
   }
-  const paymentDay = Date.UTC(
-    paymentDate.getUTCFullYear(),
-    paymentDate.getUTCMonth(),
-    paymentDate.getUTCDate(),
-  );
-  const currentDay = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
-  if (paymentDay > currentDay) {
+  if (utcCalendarDay(paymentDate) > utcCalendarDay(now)) {
     throw new RangeError("Payment date cannot be in the future.");
   }
 }
