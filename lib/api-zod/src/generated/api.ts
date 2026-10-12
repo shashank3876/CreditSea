@@ -483,7 +483,7 @@ export const ListSalesLeadsResponse = zod.object({
   "items": zod.array(zod.object({
   "id": zod.string(),
   "name": zod.string(),
-  "email": zod.string().email(),
+  "email": zod.string().max(254),
   "registeredAt": zod.coerce.date(),
   "status": zod.literal("REGISTERED_NOT_APPLIED"),
   "contactedAt": zod.coerce.date().nullable(),
@@ -521,7 +521,7 @@ export const AddSalesLeadNoteBody = zod.object({
 export const AddSalesLeadNoteResponse = zod.object({
   "id": zod.string(),
   "name": zod.string(),
-  "email": zod.string().email(),
+  "email": zod.string().max(254),
   "registeredAt": zod.coerce.date(),
   "status": zod.literal("REGISTERED_NOT_APPLIED"),
   "contactedAt": zod.coerce.date().nullable(),

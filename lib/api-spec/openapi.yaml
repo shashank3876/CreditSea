@@ -976,7 +976,8 @@ components:
       properties:
         id: { type: string }
         name: { type: string }
-        email: { type: string, format: email }
+        # Plain string: response validation must not reject historically stored addresses.
+        email: { type: string, maxLength: 254 }
         registeredAt: { type: string, format: date-time }
         status: { type: string, const: REGISTERED_NOT_APPLIED }
         contactedAt: { type: ["string", "null"], format: date-time }
